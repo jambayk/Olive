@@ -6,6 +6,7 @@ import triton
 import triton.language as tl
 
 
+@triton.jit
 def matmul_kernel(
     # Pointers to matrices
     a_ptr,
