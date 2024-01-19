@@ -40,6 +40,7 @@ OrtStatus* ORT_API_CALL RegisterCustomOps(OrtSessionOptions* options, const OrtA
     AddOrtCustomOpDomainToContainer(std::move(domain_v2));
   }
   catch(const std::exception& e) {
+    std::cout << "RegisterCustomOps failed: " << e.what() << std::endl;
     Ort::Status status{e};
     result = status.release();
   }

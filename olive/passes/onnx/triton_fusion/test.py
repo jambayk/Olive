@@ -2,6 +2,7 @@ import torch
 import tempfile
 import onnx
 import onnxruntime as ort
+import ctypes
 
 
 class DummyModel(torch.nn.Module):
@@ -23,10 +24,19 @@ def main():
 
         onnx_model = onnx.load(f"{tmpdir}/model.onnx")
 
+        opset_import = onnx_model.opset_import
+        has_custom_domain = False
+        for opset in opset_import:
+            if opset.domain == "olive.triton_fusion":
+                has_custom_domain = True
+        if not has_custom_domain:
+            opset_import.extend([onnx.helper.make_opsetid("olive.triton_fusion", 1)])
+
         # change the type of the op to TritonMatMul
         changed = 0
         for node in onnx_model.graph.node:
             if node.op_type == "MatMul":
+                node.domain = "olive.triton_fusion"
                 node.op_type = "TritonMatMul"
                 changed += 1
         print(f"Changed {changed} nodes")
