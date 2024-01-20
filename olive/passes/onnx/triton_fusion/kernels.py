@@ -86,7 +86,8 @@ def matmul_kernel(
     # TODO(jambayk): Need to do it using primitive ops instead of hand-written activation functions
 
     # TODO(jambayk): the final data type needs to be templated to support fp32 and other types
-    c = accumulator.to(tl.float16)
+    # c = accumulator.to(tl.float16)
+    c = accumulator
 
     # -----------------------------------------------------------
     # Write back the block of the output matrix C with masks.

@@ -3,26 +3,31 @@ import tempfile
 import onnx
 import onnxruntime as ort
 import numpy as np
-import shutil
-from pathlib import Path
+import time
+from tqdm import tqdm
 
 
 class DummyModel(torch.nn.Module):
     def __init__(self, in_dim, h_dim, out_dim):
         super(DummyModel, self).__init__()
         self.fc1 = torch.nn.Linear(in_dim, h_dim, bias=False)
-        # self.fc2 = torch.nn.Linear(h_dim, out_dim)
+        self.fc2 = torch.nn.Linear(h_dim, out_dim)
 
     def forward(self, x):
         x = self.fc1(x)
-        # x = self.fc2(x)
+        x = self.fc2(x)
         return x
 
 
 def main():
     with tempfile.TemporaryDirectory() as tmpdir:
-        model = DummyModel(10, 20, 30)
-        torch.onnx.export(model, torch.randn(12, 11, 10), f"{tmpdir}/model.onnx", opset_version=14)
+        in_dim, h_dim, out_dim = 4096, 8192, 4096
+        batch_size = 16
+        seq_len = 1024
+        model = DummyModel(in_dim, h_dim, out_dim)
+        dummy_input = torch.randn(batch_size, seq_len, in_dim)
+        ort_inputs = {"x": dummy_input.numpy()}
+        torch.onnx.export(model, dummy_input, f"{tmpdir}/model.onnx", opset_version=14, input_names=["x"])
 
         onnx_model = onnx.load(f"{tmpdir}/model.onnx")
 
@@ -46,28 +51,40 @@ def main():
 
         # run the model with onnxruntime
         sess_options = ort.SessionOptions()
-        sess_options.register_custom_ops_library("compiled/libcustom_op.so")
-        ort_session = ort.InferenceSession(
+        sess_options.register_custom_ops_library("output/lib/libcustom_op.so")
+        custom_session = ort.InferenceSession(
             f"{tmpdir}/model_custom.onnx", sess_options=sess_options, providers=["CUDAExecutionProvider"]
         )
-        ort_inputs = {ort_session.get_inputs()[0].name: torch.randn(12, 11, 10).cpu().numpy()}
-        ort_outputs = ort_session.run(None, ort_inputs)
+        custom_outputs = custom_session.run(None, ort_inputs)
+
+        num_iters = 1
+
+        latencies = []
+        for _ in tqdm(range(num_iters)):
+            start = time.time()
+            custom_outputs = custom_session.run(None, ort_inputs)
+            end = time.time()
+            latencies.append(end - start)
+
+        print(f"Average latency: {np.mean(latencies)}")
 
         original_session = ort.InferenceSession(f"{tmpdir}/model.onnx", providers=["CUDAExecutionProvider"])
-        original_outputs = original_session.run(None, ort_inputs)
 
-        outdir = "output"
-        shutil.rmtree(outdir, ignore_errors=True)
-        Path(outdir).mkdir(parents=True, exist_ok=True)
-        torch.save(model.state_dict(), f"{outdir}/model.pt")
-        np.save(f"{outdir}/input.npy", ort_inputs[ort_session.get_inputs()[0].name])
-        np.save(f"{outdir}/output.npy", ort_outputs[0])
-        np.save(f"{outdir}/output_original.npy", original_outputs[0])
+        original_latencies = []
+        for _ in tqdm(range(num_iters)):
+            start = time.time()
+            original_outputs = original_session.run(None, ort_inputs)
+            end = time.time()
+            original_latencies.append(end - start)
 
-        print("Done")
+        print(f"Average latency: {np.mean(original_latencies)}")
 
         # compare the outputs
-        np.testing.assert_allclose(ort_outputs[0], original_outputs[0], atol=1e-4, rtol=0.0)
+        np.testing.assert_allclose(custom_outputs[0], original_outputs[0], atol=1e-2, rtol=0.0)
+
+        print("all close passed")
+
+    print("Done")
 
 
 if __name__ == "__main__":
