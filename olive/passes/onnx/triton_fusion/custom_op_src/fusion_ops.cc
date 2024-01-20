@@ -28,13 +28,6 @@ void TritonMatMul(const Ort::Custom::CudaContext& cuda_ctx,
                   const Ort::Custom::Tensor<float>& Y,
                 // TODO(jambayk): Add support for arguments based on fused epilogues/activations
                   Ort::Custom::Tensor<float>& Z) {
-    CUSTOM_ENFORCE(cuda_ctx.cuda_stream, "failed to fetch cuda stream");
-    // CUSTOM_ENFORCE(cuda_ctx.cudnn_handle, "failed to fetch cudnn handle");
-    // CUSTOM_ENFORCE(cuda_ctx.cublas_handle, "failed to fetch cublas handle");
-    // CUSTOM_ENFORCE(cuda_ctx.arena_extend_strategy == 0, "arena_extend_strategy mismatch");
-    // void* deferred_cpu_mem = cuda_ctx.AllocDeferredCpuMem(sizeof(int32_t));
-    // CUSTOM_ENFORCE(deferred_cpu_mem, "failed to allocate deferred cpu allocator");
-    // cuda_ctx.FreeDeferredCpuMem(deferred_cpu_mem);
 
     // TODO(jambayk): create helper for shape and stride computations
     // get shape of A: M1 X ... X Mn X K.
@@ -61,10 +54,9 @@ void TritonMatMul(const Ort::Custom::CudaContext& cuda_ctx,
     auto z_raw = Z.Allocate(z_shape);
 
     // call the kernel
-    CUstream stream = cuda_ctx.cuda_stream;
-    cuStreamSynchronize(stream);
+    // ORT already handles stream synchronization (TODO(jambayk): verify this))
     load_matmul_fp32();
-    CUresult ret = matmul_fp32_default(stream,
+    CUresult ret = matmul_fp32_default(cuda_ctx.cuda_stream,
                         reinterpret_cast<CUdeviceptr>(X.DataRaw()),
                         reinterpret_cast<CUdeviceptr>(Y.DataRaw()),
                         reinterpret_cast<CUdeviceptr>(z_raw),
@@ -73,7 +65,6 @@ void TritonMatMul(const Ort::Custom::CudaContext& cuda_ctx,
                         N, 1,
                         N, 1);
     CUSTOM_ENFORCE(ret == CUDA_SUCCESS, "matmul_fp32_default failed");
-    cuStreamSynchronize(stream);
     unload_matmul_fp32();
 }
 

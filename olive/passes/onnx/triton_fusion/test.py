@@ -57,7 +57,7 @@ def main():
         )
         custom_outputs = custom_session.run(None, ort_inputs)
 
-        num_iters = 1
+        num_iters = 10
 
         latencies = []
         for _ in tqdm(range(num_iters)):
