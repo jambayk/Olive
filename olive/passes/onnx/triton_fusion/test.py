@@ -16,20 +16,26 @@ class DummyModel(torch.nn.Module):
     def forward(self, x):
         x = self.fc1(x)
         x = self.fc2(x)
+        x = torch.relu(x)
+        x = torch.relu(x)
         return x
 
 
 def main():
     with tempfile.TemporaryDirectory() as tmpdir:
-        in_dim, h_dim, out_dim = 4096, 8192, 4096
+        # in_dim, h_dim, out_dim = 4096, 8192, 4096
+        in_dim, h_dim, out_dim = 100, 200, 150
         batch_size = 16
-        seq_len = 1024
+        # seq_len = 1024
+        seq_len = 12
         model = DummyModel(in_dim, h_dim, out_dim)
         dummy_input = torch.randn(batch_size, seq_len, in_dim)
         ort_inputs = {"x": dummy_input.numpy()}
         torch.onnx.export(model, dummy_input, f"{tmpdir}/model.onnx", opset_version=14, input_names=["x"])
 
         onnx_model = onnx.load(f"{tmpdir}/model.onnx")
+
+        # onnx.save(onnx_model, f"model.onnx")
 
         opset_import = onnx_model.opset_import
         has_custom_domain = False
