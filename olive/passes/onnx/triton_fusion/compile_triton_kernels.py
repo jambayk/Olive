@@ -16,7 +16,7 @@ def compile_kernel(dir, signature, kernel_name, out_name, out_path, num_stages, 
 
 
 def compile_matmul_kernel(dir, dtype, BM, BN, BK, GM):
-    sig = f"'*{dtype}, *{dtype}, *{dtype}, i32, i32, i32, i32, i32, i32, i32, i32, i32, {BM}, {BN}, {BK}, {GM}'"
+    sig = f"'*{dtype}, *{dtype}, *{dtype}, i32, i32, i32, {BM}, {BN}, {BK}, {GM}'"
     name = f"matmul_{dtype}"
     grid = f"'((M + {BM -1})/{BM}) * ((N + {BN - 1})/{BN}), 1, 1'"
     compile_kernel(

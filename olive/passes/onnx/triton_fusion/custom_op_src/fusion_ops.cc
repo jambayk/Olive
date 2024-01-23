@@ -60,10 +60,7 @@ void TritonMatMul(const Ort::Custom::CudaContext& cuda_ctx,
                         reinterpret_cast<CUdeviceptr>(X.DataRaw()),
                         reinterpret_cast<CUdeviceptr>(Y.DataRaw()),
                         reinterpret_cast<CUdeviceptr>(z_raw),
-                        M, N, K,
-                        K, 1,
-                        N, 1,
-                        N, 1);
+                        M, N, K);
     CUSTOM_ENFORCE(ret == CUDA_SUCCESS, "matmul_fp32_default failed");
     unload_matmul_fp32();
 }
