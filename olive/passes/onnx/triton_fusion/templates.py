@@ -3,15 +3,62 @@
 # Licensed under the MIT License.
 # --------------------------------------------------------------------------
 
-TL_DTYPE_MAP = {
-    "fp32": "tl.float32",
-    "fp16": "tl.float16",
-    "int32": "tl.int32",
-    "int64": "tl.int64",
-    "bool": "tl.bool",
-    "bf16": "tl.bfloat16",
-}
+elementwise_template = """
+import triton
+import triton.language as tl
 
+# Fused operations: {fused_ops_str}
+@triton.jit
+def triton_{kernel_name}(
+    # pointers to base input tensors
+    a_ptr,
+    {b_ptr_arg}
+    # pointer to other tensors for fused operations
+    {fused_ptr_args}
+    # pointer to output tensor
+    y_ptr,
+    # number of elements for base input tensors
+    a_numel,
+    {b_numel_arg}
+    # number of elements for other tensors
+    {fused_numel_args}
+    # attributes for base operation
+    {base_attr_args}
+    # attributes for fused operations
+    {fused_attr_args}
+    # Meta-parameters
+    BLOCK_SIZE: tl.constexpr,
+):
+    \"\"\"Kernel for computing the elementwise operation Y = op(A) or Y = op(A, B).
+
+    A has shape (a_numel,) and B has shape (b_numel,) where a_numel % b_numel == 0.
+    The output Y has shape (a_numel,).
+    Elementwise operation can be fused with other elementwise operations.
+    \"\"\"
+    # -----------------------------------------------------------
+    # Map program ids `pid` to the block of Y it should compute.
+    pid = tl.program_id(axis=0).to(tl.int64)
+    y_idxs = pid * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE).to(tl.int64)
+    y_mask = y_idxs < a_numel
+
+    # -----------------------------------------------------------
+    # Load the base input tensors.
+    a = tl.load(a_ptr + y_idxs, mask=y_mask)
+    {b_load_code}
+
+    # -----------------------------------------------------------
+    # Perform the base operation.
+    {base_code}
+
+    # -----------------------------------------------------------
+    # Fusion with other operations
+    {fused_code}
+
+    # -----------------------------------------------------------
+    # Write back the output tensor Y with masks.
+    y_ptrs = y_ptr + y_idxs
+    tl.store(y_ptrs, y, mask=y_mask)
+"""
 
 matmul_template = """
 import triton
@@ -42,8 +89,9 @@ def triton_{kernel_name}(
     GROUP_SIZE_M: tl.constexpr,
 ):
     \"\"\"Kernel for computing the matmul Y = A x B.
-    A has shape (M, K), B has shape (K, N) and Y has shape (M, N)
-    Matmul can be fused with other epilogue operations such as activation, bias add, etc.
+
+    A has shape (M, K), B has shape (K, N) and Y has shape (M, N).
+    Matmul can be fused with elementwise operations such as bias addition, activation, etc.
     \"\"\"
     # -----------------------------------------------------------
     # Map program ids `pid` to the block of Y it should compute.

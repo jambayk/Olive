@@ -2,20 +2,13 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 # --------------------------------------------------------------------------
-import os
 import shutil
 from pathlib import Path
 
 from compile_triton_kernels import create_triton_kernels
 
 from olive.common.utils import run_subprocess
-
-
-def get_env_path(var_name):
-    if not os.environ.get(var_name):
-        raise RuntimeError(f"{var_name} not set")
-
-    return Path(os.environ[var_name])
+from olive.passes.onnx.triton_fusion.utils import get_env_path
 
 
 def get_cuda_include_dir():

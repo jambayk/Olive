@@ -22,7 +22,7 @@ class ElementwiseOp(ConfigBase):
 
 
 # elementwise operations that have a single input
-elementwise_ops = {
+ELEMENTWISE_OPS = {
     # Math functions
     "Abs": ElementwiseOp(triton_template="tl.math.abs({in0})"),
     "Ceil": ElementwiseOp(triton_template="tl.math.ceil({in0})"),
@@ -65,7 +65,7 @@ elementwise_ops = {
 # TODO(jambayk): Add support for multidiensional broadcasting
 # For fusion with matmul, can only support unidirectional broadcasting with matmul output
 # as the first input
-elementwise_two_input_ops = {
+ELEMENTWISE_TWO_INPUT_OPS = {
     "Add": ElementwiseOp(triton_template="{in0} + {in1}"),
     "Div": ElementwiseOp(triton_template="{in0} / {in1}"),
     "Mul": ElementwiseOp(triton_template="{in0} * {in1}"),
