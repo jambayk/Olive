@@ -29,8 +29,8 @@ def triton_{kernel_name}(
     y_ptr,
     # matrix dimensions
     M,
-    N, 
-    K, 
+    N,
+    K,
     # number of elements for other tensors
     {fused_numel_args}
     # attributes for fused operations

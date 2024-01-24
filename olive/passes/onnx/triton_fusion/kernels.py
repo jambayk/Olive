@@ -24,6 +24,7 @@ def matmul_kernel(
     # TODO(jambayk): Add support for epilogue fusions (e.g. activation, bias, etc.)
 ):
     """Kernel for computing the matmul Y = A x B.
+
     A has shape (M, K), B has shape (K, N) and Y has shape (M, N)
     """
     # -----------------------------------------------------------
@@ -59,7 +60,7 @@ def matmul_kernel(
     # of fp32 values for higher accuracy.
     # `accumulator` will be converted back to fp16 after the loop.
     accumulator = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
-    for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):
+    for k in range(tl.cdiv(K, BLOCK_SIZE_K)):
         # Load the next block of A and B, generate a mask by checking the K dimension.
         # If it is out of bounds, set it to 0.
         a = tl.load(a_ptrs, mask=offs_k[None, :] < K - k * BLOCK_SIZE_K, other=0.0)
@@ -108,6 +109,7 @@ def matmul_add_kernel(
     GROUP_SIZE_M: tl.constexpr,  #
 ):
     """Kernel for computing the matmul Y = A x B + C.
+
     A has shape (M, K), B has shape (K, N) and Y has shape (M, N)
     C has shape (L, N) where L is a divisor of M. Currently only supports
     unidirectional broadcasting where the sizes of C must be a suffix of Y.
@@ -145,7 +147,7 @@ def matmul_add_kernel(
     # of fp32 values for higher accuracy.
     # `accumulator` will be converted back to fp16 after the loop.
     accumulator = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
-    for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):
+    for k in range(tl.cdiv(K, BLOCK_SIZE_K)):
         # Load the next block of A and B, generate a mask by checking the K dimension.
         # If it is out of bounds, set it to 0.
         a = tl.load(a_ptrs, mask=offs_k[None, :] < K - k * BLOCK_SIZE_K, other=0.0)

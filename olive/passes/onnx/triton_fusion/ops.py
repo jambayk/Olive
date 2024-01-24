@@ -2,9 +2,9 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 # --------------------------------------------------------------------------
-from olive.common.config_utils import ConfigBase
-from typing import List, Union, Tuple
+from typing import List, Tuple, Union
 
+from olive.common.config_utils import ConfigBase
 
 # TODO(jambayk): Create a class to hold all ops and their metadata, perform transformations, etc.
 

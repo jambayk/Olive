@@ -1,8 +1,8 @@
-# Triton Fused Kernels as ORT Custom Ops 
+# Triton Fused Kernels as ORT Custom Ops
 
 ## Install torch and triton
-This requires latest nightly build of triton. 
-```bash 
+This requires latest nightly build of triton.
+```bash
 pip install torch
 pip uninstall -y triton
 pip install -U --index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/Triton-Nightly/pypi/simple/ triton-nightly
@@ -26,10 +26,10 @@ Also requires the path to cuda to be set using `CUDA_HOME` environment variable.
 
 ## Build ORT Custom Ops
 ```bash
-python build_custom_ops.py
+python build_custom_op.py
 ```
 
 ## Run the example
 ```bash
-python test.py
+python test_custom_op.py
 ```

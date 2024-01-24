@@ -1,8 +1,14 @@
-from olive.common.utils import run_subprocess
-from pathlib import Path
+# -------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+# --------------------------------------------------------------------------
 import os
 import shutil
+from pathlib import Path
+
 from compile_triton_kernels import create_triton_kernels
+
+from olive.common.utils import run_subprocess
 
 
 def get_env_path(var_name):

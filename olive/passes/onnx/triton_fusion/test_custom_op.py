@@ -1,15 +1,20 @@
-import torch
+# -------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+# --------------------------------------------------------------------------
 import tempfile
+import time
+
+import numpy as np
 import onnx
 import onnxruntime as ort
-import numpy as np
-import time
+import torch
 from tqdm import tqdm
 
 
 class DummyModel(torch.nn.Module):
     def __init__(self, in_dim, h_dim, out_dim):
-        super(DummyModel, self).__init__()
+        super().__init__()
         self.fc1 = torch.nn.Linear(in_dim, h_dim, bias=False)
         self.fc2 = torch.nn.Linear(h_dim, out_dim)
 
@@ -17,8 +22,7 @@ class DummyModel(torch.nn.Module):
         x = self.fc1(x)
         x = self.fc2(x)
         x = torch.relu(x)
-        x = torch.relu(x)
-        return x
+        return torch.sigmoid(x)
 
 
 def main():
