@@ -70,7 +70,7 @@ void RegisterOps(Ort::CustomOpDomain& domain) {{
 }} // namespace OliveTritonFusion
 """
 
-CUSTOM_KERNEL_INCLUDE = '#include "{kernel_name}.h"'
+CUSTOM_KERNEL_INCLUDE = '#include "{kernel_name}/{kernel_name}.h"'
 
 CUSTOM_OP_REGISTRATION = """
   // Register {custom_op_name}

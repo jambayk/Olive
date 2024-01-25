@@ -106,5 +106,4 @@ def create_kernel(base_op: str, fused_ops: List[str], dtype: str) -> Tuple[str, 
         ),
     }
 
-    # create full kernel
-    return kernel_name, template.format(**template_args)
+    return {"kernel_name": kernel_name, "kernel_code": template.format(**template_args)}

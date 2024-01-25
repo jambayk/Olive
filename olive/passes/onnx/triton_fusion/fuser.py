@@ -2,10 +2,10 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 # --------------------------------------------------------------------------
-from pathlib import Path
-from typing import Tuple, Union
+from typing import Dict
 
 from olive.passes.onnx.triton_fusion.codegen.ops import ELEMENTWISE_OPS, ELEMENTWISE_TWO_INPUT_OPS
+from olive.passes.onnx.triton_fusion.codegen.ort_generator import create_custom_op
 from olive.passes.onnx.triton_fusion.codegen.triton_generator import create_kernel
 
 
@@ -28,12 +28,8 @@ class Fuser:
         assert self.is_valid_fused_op(op), f"Unsupported fused op: {op}"
         self.fused_ops.append(op)
 
-    def write_triton_kernel(self, out_dir: Union[str, Path]) -> Tuple[str, Path]:
-        out_dir = Path(out_dir)
-        out_dir.mkdir(parents=True, exist_ok=True)
+    def get_triton_kernel(self) -> Dict:
+        return create_kernel(self.base_op, self.fused_ops, self.dtype)
 
-        kernel_name, kernel_code = create_kernel(self.base_op, self.fused_ops, self.dtype)
-        with Path(out_dir / f"{kernel_name}.py").open("w") as f:
-            f.write(kernel_code)
-
-        return kernel_name, out_dir / f"{kernel_name}.py"
+    def get_custom_op(self) -> Dict:
+        return create_custom_op(self.base_op, self.fused_ops, self.dtype)
