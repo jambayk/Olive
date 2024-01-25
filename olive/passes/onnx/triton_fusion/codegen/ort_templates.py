@@ -23,13 +23,13 @@ CUSTOM_OP_SKELETON = """
 using namespace Ort::Custom;
 
 #define CUSTOM_ENFORCE(cond, msg)  \
-  if (!(cond)) {                   \
+  if (!(cond)) {{                   \
     throw std::runtime_error(msg); \
-  }
+  }}
 
 void ValidateElementwiseShapes(
     const std::vector<int64_t>& a_shape,
-    const std::vector<int64_t>& b_shape) {
+    const std::vector<int64_t>& b_shape) {{
   // currently, we only support limited one-directional broadcasting
   // 1s can only be prepended to the second input
   // second input withou leading 1s must be a suffix of the first input
@@ -40,7 +40,7 @@ void ValidateElementwiseShapes(
   // check that the trailing dimensions match
   bool leading_ones = true;
   bool mismatch = false;
-  for (size_t i = 0; i < b_shape.size(); ++i) {
+  for (size_t i = 0; i < b_shape.size(); ++i) {{
     int64_t a_shape_i = a_shape[a_shape.size() - b_shape.size() + i];
     int64_t b_shape_i = b_shape[i];
     // skip leading ones in the second input
@@ -48,35 +48,35 @@ void ValidateElementwiseShapes(
     // once we see a non-one dimension, we are no longer skipping 1s in the second input
     leading_ones = false;
     // check that the dimensions match
-    if (a_shape_i != b_shape_i) {
+    if (a_shape_i != b_shape_i) {{
       mismatch = true;
       break;
-    }
-  }
+    }}
+  }}
   CUSTOM_ENFORCE(!mismatch, "Input shapes are not compatible");
-}
+}}
 
-namespace OliveTritonFusion {
+namespace OliveTritonFusion {{
 
 // Define Custom Ops
 {custom_op_defs}
 
 
 // Register Custom Ops
-void RegisterOps(Ort::CustomOpDomain& domain) {
+void RegisterOps(Ort::CustomOpDomain& domain) {{
   {custom_op_registrations}
-}
+}}
 
-} // namespace OliveTritonFusion
+}} // namespace OliveTritonFusion
 """
 
 CUSTOM_KERNEL_INCLUDE = '#include "{kernel_name}.h"'
 
 CUSTOM_OP_REGISTRATION = """
   // Register {custom_op_name}
-  static const std::unique_ptr<OrtLiteCustomOp> c_{custom_op_name}{
+  static const std::unique_ptr<OrtLiteCustomOp> c_{custom_op_name}{{
     Ort::Custom::CreateLiteCustomOp("{custom_op_name}", "CUDAExecutionProvider", {custom_op_name})
-  };
+  }};
   domain.Add(c_CustomOpOne.get());
 """
 
@@ -84,28 +84,28 @@ MATMUL_TEMPLATE = """
 void {custom_op_name}(
     const Ort::Custom::CudaContext& cuda_ctx,
     // matmul inputs
-    const Ort::Custom::Tensor<{dtype}>& A,
-    const Ort::Custom::Tensor<{dtype}>& B,
+    const Ort::Custom::Tensor<{dtype}>& a,
+    const Ort::Custom::Tensor<{dtype}>& b,
     // fused Op inputs
-    {fused_input_params}
+    {input_params}
     // fused Op attributes
-    {fused_attr_params}
+    {attr_params}
     // output
-    Ort::Custom::Tensor<float>& Y) {
+    Ort::Custom::Tensor<float>& y) {{
 
-  // get shape of A: M1 X ... X Mn X K.
+  // get shape of a: M1 X ... X Mn X K.
   // Ex. batch_size X seq_len X K
-  auto a_shape = A.Shape();
+  auto a_shape = a.Shape();
   // stack all dimensions except the last one
   int64_t M = std::accumulate(a_shape.begin(), a_shape.end() - 1, 1, std::multiplies<int64_t>());
   // last dimension
   int64_t K = a_shape.back();
 
-  // currently, we will only support 2D tensors for B
-  // shape of B: K X N
-  auto b_shape = B.Shape();
-  CUSTOM_ENFORCE(b_shape.size() == 2, "B must be a 2D tensor");
-  CUSTOM_ENFORCE(b_shape[0] == K, "First dimension of B must be equal to last dimension of A");
+  // currently, we will only support 2D tensors for b
+  // shape of b: K X N
+  auto b_shape = b.Shape();
+  CUSTOM_ENFORCE(b_shape.size() == 2, "b must be a 2D tensor");
+  CUSTOM_ENFORCE(b_shape[0] == K, "First dimension of b must be equal to last dimension of a");
   int64_t N = b_shape[1];
 
   // shape of output: M1 X ... X Mn X N
@@ -114,73 +114,64 @@ void {custom_op_name}(
   y_shape.back() = N;
 
   // validate shapes of fused inputs
-  {fused_input_shape_validation}
+  {input_shape_validation}
 
   // allocate output tensor
-  auto y_raw = Y.Allocate(y_shape);
+  auto y_raw = y.Allocate(y_shape);
 
   // call the kernel
   load_{kernel_name}();
   CUresult ret = {kernel_name}(
       cuda_ctx.cuda_stream,
-      reinterpret_cast<CUdeviceptr>(X.DataRaw()),
-      reinterpret_cast<CUdeviceptr>(Y.DataRaw()),
-      {fused_input_args}
+      reinterpret_cast<CUdeviceptr>(x.DataRaw()),
+      reinterpret_cast<CUdeviceptr>(y.DataRaw()),
+      {input_args}
       reinterpret_cast<CUdeviceptr>(y_raw),
       M, N, K,
-      {fused_numel_args}
-      {fused_attr_args}
+      {numel_args}
+      {attr_args}
       0);
   CUSTOM_ENFORCE(ret == CUDA_SUCCESS, "{kernel_name}_default failed");
   unload_{kernel_name}();
-}
+}}
 """
 
 ELEMENTWISE_TEMPLATE = """
 void {custom_op_name}(
     const Ort::Custom::CudaContext& cuda_ctx,
-    // base operation inputs
-    const Ort::Custom::Tensor<{dtype}>& A,
-    {base_input_param}
-    // fused operations inputs
-    {fused_input_params}
-    // base operation attributes
-    {base_attr_params}
-    // fused operations attributes
-    {fused_attr_params}
+    // base input
+    const Ort::Custom::Tensor<{dtype}>& a,
+    // other inputs
+    {input_params}
+    // attributes
+    {attr_params}
     // output
-    Ort::Custom::Tensor<{dtype}>& Y) {
+    Ort::Custom::Tensor<{dtype}>& y) {{
 
   // output shape is the same as input shape
   // true because we only support limited one-directional broadcasting
-  auto y_shape = A.Shape();
+  auto y_shape = a.Shape();
 
-  // validate shape of base operation's second input
-  {base_input_shape_validation}
-
-  // validate shapes of fused inputs
-  {fused_input_shape_validation}
+  // validate shapes of other inputs
+  {input_shape_validation}
 
   // allocate output tensor
-  auto y_raw = Y.Allocate(y_shape);
+  auto y_raw = y.Allocate(y_shape);
 
   // call the kernel
   load_{kernel_name}();
   CUresult ret = {kernel_name}_default(
       cuda_ctx.cuda_stream,
-      reinterpret_cast<CUdeviceptr>(A.DataRaw()),
-      {base_input_args}
-      {fused_input_args}
+      reinterpret_cast<CUdeviceptr>(a.DataRaw()),
+      {input_args}
       reinterpret_cast<CUdeviceptr>(y_raw),
-      A.NumberOfElement(),
-      {base_numel_arg}
-      {fused_numel_args}
-      {base_attr_args}
-      {fused_attr_args}
+      a.NumberOfElement(),
+      {numel_args}
+      {attr_args}
       0);
   CUSTOM_ENFORCE(ret == CUDA_SUCCESS, "{kernel_name}_default failed");
   unload_{kernel_name}();
-}
+}}
 """
 
 INPUT_PARAM = "const Ort::Custom::Tensor<{dtype}>& {input_name}"

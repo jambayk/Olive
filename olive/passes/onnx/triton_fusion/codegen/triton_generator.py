@@ -78,9 +78,6 @@ def create_kernel(base_op: str, fused_ops: List[str], dtype: str) -> Tuple[str, 
     op_names = [base_op, *fused_ops]
     template = templates.MATMUL_TEMPLATE if base_op == "MatMul" else templates.ELEMENTWISE_TEMPLATE
 
-    # create args for base op
-    base_op_args = {"y_dtype": TL_DTYPE_MAP[dtype]}
-
     # create args for fused ops
     ptr_params = []
     numel_params = []
@@ -95,6 +92,7 @@ def create_kernel(base_op: str, fused_ops: List[str], dtype: str) -> Tuple[str, 
         codes.append(template_args["code"])
     kernel_name = create_triton_kernel_name(op_names, dtype)
     template_args = {
+        "y_dtype": TL_DTYPE_MAP[dtype],
         "fused_ops_str": ", ".join(op_names),
         "kernel_name": kernel_name,
         "ptr_params": join_params(ptr_params),
@@ -109,4 +107,4 @@ def create_kernel(base_op: str, fused_ops: List[str], dtype: str) -> Tuple[str, 
     }
 
     # create full kernel
-    return kernel_name, template.format(**base_op_args, **template_args)
+    return kernel_name, template.format(**template_args)
