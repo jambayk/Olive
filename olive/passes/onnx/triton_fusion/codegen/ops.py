@@ -36,7 +36,8 @@ ELEMENTWISE_OPS = {
         triton_template="tl.where({in0} > 0.0, {in0}, {alpha} * (tl.exp({in0} / {alpha}) - 1.0))",
     ),
     "Elu": ElementwiseOp(
-        attributes=[("alpha", "fp32")], triton_template="tl.where({in0} > 0.0, {in0}, {alpha} * (tl.exp({in0}) - 1.0))"
+        attributes=[("alpha", "fp32")],
+        triton_template="tl.where({in0} > 0.0, {in0}, {alpha} * (tl.exp({in0}) - 1.0))",
     ),
     "LeakyRelu": ElementwiseOp(
         attributes=[("alpha", "fp32")], triton_template="tl.where({in0} > 0.0, {in0}, {alpha} * {in0})"
@@ -62,7 +63,7 @@ ELEMENTWISE_OPS = {
 # - shape of second input must be a suffix of the shape of the first input
 # - Only leading 1s are allowed in the shape of the second input
 # - Example [2, 3, 4, 5]: [1], [5], [1, 5], [4, 5], ...
-# TODO(jambayk): Add support for multidiensional broadcasting
+# TODO(jambayk): Add support for multidimensional broadcasting
 # For fusion with matmul, can only support unidirectional broadcasting with matmul output
 # as the first input
 ELEMENTWISE_TWO_INPUT_OPS = {
@@ -72,3 +73,21 @@ ELEMENTWISE_TWO_INPUT_OPS = {
     "Pow": ElementwiseOp(triton_template="tl.pow({in0}, {in1})"),
     "Sub": ElementwiseOp(triton_template="{in0} - {in1}"),
 }
+
+
+def get_op_info(op: str) -> ElementwiseOp:
+    if op in ELEMENTWISE_OPS:
+        return ELEMENTWISE_OPS[op]
+    elif op in ELEMENTWISE_TWO_INPUT_OPS:
+        return ELEMENTWISE_TWO_INPUT_OPS[op]
+    else:
+        raise ValueError(f"Unsupported elementwise op: {op}")
+
+
+def get_num_op_inputs(op: str) -> int:
+    if op in ELEMENTWISE_OPS:
+        return 1
+    elif op in ELEMENTWISE_TWO_INPUT_OPS:
+        return 2
+    else:
+        raise ValueError(f"Unsupported elementwise op: {op}")

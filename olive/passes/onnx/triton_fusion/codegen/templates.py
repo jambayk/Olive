@@ -3,7 +3,7 @@
 # Licensed under the MIT License.
 # --------------------------------------------------------------------------
 
-elementwise_template = """
+ELEMENTWISE_TEMPLATE = """
 import triton
 import triton.language as tl
 
@@ -42,9 +42,11 @@ def triton_{kernel_name}(
     y_mask = y_idxs < a_numel
 
     # -----------------------------------------------------------
-    # Load the base input tensors.
+    # Load first input tensor
     a = tl.load(a_ptr + y_idxs, mask=y_mask)
-    {b_load_code}
+    # will use fp32 since many triton ops only support fp32/fp64
+    # TODO: investigate if we can use fp16
+    a = a.to(tl.float32)
 
     # -----------------------------------------------------------
     # Perform the base operation.
@@ -56,11 +58,12 @@ def triton_{kernel_name}(
 
     # -----------------------------------------------------------
     # Write back the output tensor Y with masks.
+    y = a.to({y_dtype})
     y_ptrs = y_ptr + y_idxs
     tl.store(y_ptrs, y, mask=y_mask)
 """
 
-matmul_template = """
+MATMUL_TEMPLATE = """
 import triton
 import triton.language as tl
 
@@ -136,8 +139,8 @@ def triton_{kernel_name}(
         a_ptrs += BLOCK_SIZE_K
         b_ptrs += BLOCK_SIZE_K * N
 
-    # cast accumulator to destination type
-    y = accumulator.to({y_dtype})
+    # will keep y as fp32 since many triton ops only support fp32/fp64
+    y = accumulator
 
     # -----------------------------------------------------------
     # Indices for the output matrix
@@ -152,6 +155,16 @@ def triton_{kernel_name}(
 
     # -----------------------------------------------------------
     # Write back the block of the output matrix Y with masks.
+    y = y.to({y_dtype})
     y_ptrs = y_ptr + y_idxs
     tl.store(y_ptrs, y, mask=y_mask)
 """
+
+FUSED_OP_TWO_INPUT_TEMPLATE = """
+    # load the second input tensor
+    {in1}_idxs = y_idxs % {in1_numel}
+    {in1}_ptrs = {in1_ptr} + {in1}_idxs
+    {in1} = tl.load({in1}_ptrs, mask=y_mask, eviction_policy='evict_last')
+    {in1} = {in1}.to(tl.float32)
+    # perform the operation
+    {op_code}"""

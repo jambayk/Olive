@@ -4,7 +4,7 @@
 This requires latest nightly build of triton.
 ```bash
 pip install torch
-pip uninstall -y triton
+pip uninstall -y triton triton-nightly
 pip install -U --index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/Triton-Nightly/pypi/simple/ triton-nightly
 ```
 
