@@ -6,9 +6,6 @@ from typing import List, Tuple, Union
 
 from olive.common.config_utils import ConfigBase
 
-# TODO(jambayk): Create a class to hold all ops and their metadata, perform transformations, etc.
-
-
 # -----------------------------------------------------------
 # Elementwise operations
 # -----------------------------------------------------------

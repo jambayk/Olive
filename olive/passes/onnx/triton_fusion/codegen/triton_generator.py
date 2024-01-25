@@ -5,7 +5,7 @@
 from typing import Dict, List, Tuple
 
 from olive.passes.onnx.triton_fusion.codegen.ops import get_num_op_inputs, get_op_info
-from olive.passes.onnx.triton_fusion.codegen.templates import (
+from olive.passes.onnx.triton_fusion.codegen.triton_templates import (
     ELEMENTWISE_TEMPLATE,
     FUSED_OP_TWO_INPUT_TEMPLATE,
     MATMUL_TEMPLATE,

@@ -66,7 +66,9 @@ void TritonMatMul(const Ort::Custom::CudaContext& cuda_ctx,
 }
 
 void RegisterOps(Ort::CustomOpDomain& domain) {
-  static const std::unique_ptr<OrtLiteCustomOp> c_CustomOpOne{Ort::Custom::CreateLiteCustomOp("TritonMatMul", "CUDAExecutionProvider", TritonMatMul)};
+  static const std::unique_ptr<OrtLiteCustomOp> c_CustomOpOne{
+    Ort::Custom::CreateLiteCustomOp("TritonMatMul", "CUDAExecutionProvider", TritonMatMul)
+  };
   domain.Add(c_CustomOpOne.get());
 }
 
