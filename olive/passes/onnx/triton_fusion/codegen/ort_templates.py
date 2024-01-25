@@ -17,7 +17,7 @@ CUSTOM_OP_SKELETON = """
 #include "onnxruntime_lite_custom_op.h"
 
 // Include custom kernels headers
-{custom_kernel_headers}
+{custom_kernel_includes}
 
 
 using namespace Ort::Custom;
@@ -70,7 +70,7 @@ void RegisterOps(Ort::CustomOpDomain& domain) {
 } // namespace OliveTritonFusion
 """
 
-CUSTOM_OP_INCLUDE = '#include "{custom_op_header}"'
+CUSTOM_KERNEL_INCLUDE = '#include "{kernel_name}.h"'
 
 CUSTOM_OP_REGISTRATION = """
   // Register {custom_op_name}

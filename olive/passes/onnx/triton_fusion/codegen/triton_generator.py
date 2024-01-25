@@ -4,13 +4,9 @@
 # --------------------------------------------------------------------------
 from typing import Dict, List, Tuple
 
+import olive.passes.onnx.triton_fusion.codegen.triton_templates as templates
 from olive.passes.onnx.triton_fusion.codegen.ops import get_num_op_inputs, get_op_info
-from olive.passes.onnx.triton_fusion.codegen.triton_templates import (
-    ELEMENTWISE_TEMPLATE,
-    FUSED_OP_TWO_INPUT_TEMPLATE,
-    MATMUL_TEMPLATE,
-)
-from olive.passes.onnx.triton_fusion.utils import TL_DTYPE_MAP
+from olive.passes.onnx.triton_fusion.utils import TL_DTYPE_MAP, create_triton_kernel_name, join_params
 
 
 def create_template_arg(op: str, op_idx: int, in_ptr: str, out_ptr: str) -> Dict:
@@ -28,7 +24,7 @@ def create_template_arg(op: str, op_idx: int, in_ptr: str, out_ptr: str) -> Dict
     # args to be generate the op code
     code_args = {"in0": in_ptr}
     # args to be used in the full template
-    template_args = {"op_name": op.lower(), "ptr_arg": None, "numel_arg": None, "attr_args": [], "code": None}
+    template_args = {"op_name": op.lower(), "ptr_param": None, "numel_param": None, "attr_params": [], "code": None}
 
     # create arg for second input if exists
     if num_inputs == 2:
@@ -37,8 +33,8 @@ def create_template_arg(op: str, op_idx: int, in_ptr: str, out_ptr: str) -> Dict
         code_args["in1"] = in1
         code_args["in1_ptr"] = f"{in1}_ptr"
         code_args["in1_numel"] = f"{in1}_numel"
-        template_args["ptr_arg"] = f"{in1}_ptr"
-        template_args["numel_arg"] = f"{in1}_numel"
+        template_args["ptr_param"] = f"{in1}_ptr"
+        template_args["numel_param"] = f"{in1}_numel"
 
     # create unique temp var if needed
     for tmp_idx in range(op_info.num_temp_vars):
@@ -49,7 +45,7 @@ def create_template_arg(op: str, op_idx: int, in_ptr: str, out_ptr: str) -> Dict
     for attr_name, _ in op_info.attributes or []:
         attr_arg = f"{unique_op_name}_{attr_name}"
         code_args[attr_name] = attr_arg
-        template_args["attr_args"].append(attr_arg)
+        template_args["attr_params"].append(attr_arg)
 
     # create operator code
     operator_code = ""
@@ -68,7 +64,7 @@ def create_template_arg(op: str, op_idx: int, in_ptr: str, out_ptr: str) -> Dict
         full_code += f"\n    {operator_code}"
     else:
         code_args["op_code"] = operator_code
-        full_code += FUSED_OP_TWO_INPUT_TEMPLATE.format(**code_args)
+        full_code += templates.FUSED_OP_TWO_INPUT_TEMPLATE.format(**code_args)
     template_args["code"] = full_code
 
     return template_args
@@ -80,41 +76,37 @@ def create_kernel(base_op: str, fused_ops: List[str], dtype: str) -> Tuple[str, 
     Returns the kernel name and the kernel code.
     """
     op_names = [base_op, *fused_ops]
-    template = MATMUL_TEMPLATE if base_op == "MatMul" else ELEMENTWISE_TEMPLATE
+    template = templates.MATMUL_TEMPLATE if base_op == "MatMul" else templates.ELEMENTWISE_TEMPLATE
 
     # create args for base op
     base_op_args = {"y_dtype": TL_DTYPE_MAP[dtype]}
-    if base_op != "MatMul":
-        template_args = create_template_arg(base_op, 0, "a", "y")
-        base_op_args = {
-            "b_ptr_arg": template_args["ptr_arg"] + "," if template_args["ptr_arg"] else "# Not used",
-            "b_numel_arg": template_args["numel_arg"] + "," if template_args["numel_arg"] else "# Not used",
-            "base_attr_args": ",\n    ".join(template_args["attr_args"]) + ","
-            if template_args["attr_args"]
-            else "# Not used",
-            "base_code": template_args["code"],
-        }
 
     # create args for fused ops
-    fused_ptr_args = []
-    fused_numel_args = []
-    fused_attr_args = []
-    fused_code = []
-    for op_idx, op in enumerate(fused_ops):
-        template_args = create_template_arg(op, op_idx + 1, "y", "y")
-        if template_args["ptr_arg"]:
-            fused_ptr_args.append(template_args["ptr_arg"])
-            fused_numel_args.append(template_args["numel_arg"])
-        fused_attr_args.extend(template_args["attr_args"] or [])
-        fused_code.append(template_args["code"])
+    ptr_params = []
+    numel_params = []
+    attr_params = []
+    codes = []
+    for op_idx, op in enumerate(fused_ops if base_op == "MatMul" else op_names):
+        template_args = create_template_arg(op, op_idx, "y", "y")
+        if template_args["ptr_param"]:
+            ptr_params.append(template_args["ptr_param"])
+            numel_params.append(template_args["numel_param"])
+        attr_params.extend(template_args["attr_params"] or [])
+        codes.append(template_args["code"])
+    kernel_name = create_triton_kernel_name(op_names, dtype)
     template_args = {
         "fused_ops_str": ", ".join(op_names),
-        "kernel_name": dtype + ("_" + "_".join([op.lower() for op in op_names]) if op_names else ""),
-        "fused_ptr_args": ",\n    ".join(fused_ptr_args) + "," if fused_ptr_args else "# Not used",
-        "fused_numel_args": ",\n    ".join(fused_numel_args) + "," if fused_numel_args else "# Not used",
-        "fused_attr_args": ",\n    ".join(fused_attr_args) + "," if fused_attr_args else "# Not used",
-        "fused_code": "\n\n    ".join(fused_code) if fused_code else "# No fused ops",
+        "kernel_name": kernel_name,
+        "ptr_params": join_params(ptr_params),
+        "numel_params": join_params(numel_params),
+        "attr_params": join_params(attr_params),
+        "fused_code": join_params(
+            codes,
+            joiner="\n\n    ",
+            end="",
+            default="# No fused op" if base_op == "MatMul" else "# This should not happen!",
+        ),
     }
 
     # create full kernel
-    return f"triton_{template_args['kernel_name']}", template.format(**base_op_args, **template_args)
+    return kernel_name, template.format(**base_op_args, **template_args)

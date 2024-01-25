@@ -9,23 +9,19 @@ import triton.language as tl
 
 # Fused operations: {fused_ops_str}
 @triton.jit
-def triton_{kernel_name}(
-    # pointers to base input tensors
+def {kernel_name}(
+    # pointers to base input tensor
     a_ptr,
-    {b_ptr_arg}
-    # pointer to other tensors for fused operations
-    {fused_ptr_args}
+    # pointer to other tensors
+    {ptr_params}
     # pointer to output tensor
     y_ptr,
-    # number of elements for base input tensors
+    # number of elements for base input tensor
     a_numel,
-    {b_numel_arg}
     # number of elements for other tensors
-    {fused_numel_args}
-    # attributes for base operation
-    {base_attr_args}
-    # attributes for fused operations
-    {fused_attr_args}
+    {numel_params}
+    # attributes for ops
+    {attr_params}
     # Meta-parameters
     BLOCK_SIZE: tl.constexpr,
 ):
@@ -43,22 +39,18 @@ def triton_{kernel_name}(
 
     # -----------------------------------------------------------
     # Load first input tensor
-    a = tl.load(a_ptr + y_idxs, mask=y_mask)
+    y = tl.load(a_ptr + y_idxs, mask=y_mask)
     # will use fp32 since many triton ops only support fp32/fp64
     # TODO: investigate if we can use fp16
-    a = a.to(tl.float32)
+    y = y.to(tl.float32)
 
     # -----------------------------------------------------------
-    # Perform the base operation.
-    {base_code}
-
-    # -----------------------------------------------------------
-    # Fusion with other operations
+    # Perform operations
     {fused_code}
 
     # -----------------------------------------------------------
     # Write back the output tensor Y with masks.
-    y = a.to({y_dtype})
+    y = y.to({y_dtype})
     y_ptrs = y_ptr + y_idxs
     tl.store(y_ptrs, y, mask=y_mask)
 """
@@ -69,12 +61,12 @@ import triton.language as tl
 
 # Fused operations: {fused_ops_str}
 @triton.jit
-def triton_{kernel_name}(
+def {kernel_name}(
     # pointers to matrices
     a_ptr,
     b_ptr,
     # pointer to other tensors for fused operations
-    {fused_ptr_args}
+    {ptr_params}
     # pointer to output tensor
     y_ptr,
     # matrix dimensions
@@ -82,9 +74,9 @@ def triton_{kernel_name}(
     N,
     K,
     # number of elements for other tensors
-    {fused_numel_args}
+    {numel_params}
     # attributes for fused operations
-    {fused_attr_args}
+    {attr_params}
     # Meta-parameters
     BLOCK_SIZE_M: tl.constexpr,
     BLOCK_SIZE_N: tl.constexpr,
