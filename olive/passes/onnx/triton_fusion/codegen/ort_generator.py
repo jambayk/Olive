@@ -14,7 +14,7 @@ from olive.passes.onnx.triton_fusion.utils import (
 )
 
 
-def create_template_arg(op: str, op_idx: int, cpp_dtype: str) -> Dict:
+def get_op_args(op: str, op_idx: int, cpp_dtype: str) -> Dict:
     """Create the op related template arguments to use in the fused op template.
 
     Currently, we only support elementwise ops.
@@ -39,7 +39,7 @@ def create_template_arg(op: str, op_idx: int, cpp_dtype: str) -> Dict:
     # create arg for second input if exists
     if num_inputs == 2:
         in1 = f"{unique_op_name}_in1"
-        template_args["input_param"] = templates.INPUT_PARAM.format(dtype=cpp_dtype, input_name=in1)
+        template_args["input_param"] = templates.INPUT_PARAM.format(cpp_dtype=cpp_dtype, input_name=in1)
         template_args["input_shape_validation"] = templates.INPUT_SHAPE_VALIDATION.format(input_name=in1)
         template_args["input_arg"] = templates.INPUT_ARG.format(input_name=in1)
         template_args["numel_arg"] = templates.NUMEL_ARG.format(input_name=in1)
@@ -48,7 +48,7 @@ def create_template_arg(op: str, op_idx: int, cpp_dtype: str) -> Dict:
     for attr_name, attr_dtype in op_info.attributes or []:
         attr_arg = f"{unique_op_name}_{attr_name}"
         template_args["attr_params"].append(
-            templates.ATTR_PARAM.format(attr_dtype=CPP_DTYPE_MAP[attr_dtype], attr_name=attr_arg)
+            templates.ATTR_PARAM.format(attr_cpp_dtype=CPP_DTYPE_MAP[attr_dtype], attr_name=attr_arg)
         )
         template_args["attr_args"].append(attr_arg)
 
@@ -75,7 +75,7 @@ def create_custom_op(base_op: str, fused_ops: List[str], dtype: str) -> Tuple[st
     numel_args = []
     attr_args = []
     for op_idx, op in enumerate(fused_ops if base_op == "MatMul" else op_names):
-        template_args = create_template_arg(op, op_idx, cpp_dtype)
+        template_args = get_op_args(op, op_idx, cpp_dtype)
         if template_args["input_param"]:
             input_params.append(template_args["input_param"])
             input_shape_validations.append(template_args["input_shape_validation"])
@@ -84,7 +84,7 @@ def create_custom_op(base_op: str, fused_ops: List[str], dtype: str) -> Tuple[st
         attr_params.extend(template_args["attr_params"] or [])
         attr_args.extend(template_args["attr_args"] or [])
     template_args = {
-        "dtype": cpp_dtype,
+        "cpp_dtype": cpp_dtype,
         "custom_op_name": custom_op_name,
         "kernel_name": kernel_name,
         "input_params": join_params(input_params, default=default_comment),

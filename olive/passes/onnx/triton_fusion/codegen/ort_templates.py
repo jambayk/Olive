@@ -84,8 +84,8 @@ MATMUL_TEMPLATE = """
 void {custom_op_name}(
     const Ort::Custom::CudaContext& cuda_ctx,
     // matmul inputs
-    const Ort::Custom::Tensor<{dtype}>& a,
-    const Ort::Custom::Tensor<{dtype}>& b,
+    const Ort::Custom::Tensor<{cpp_dtype}>& a,
+    const Ort::Custom::Tensor<{cpp_dtype}>& b,
     // fused Op inputs
     {input_params}
     // fused Op attributes
@@ -140,13 +140,13 @@ ELEMENTWISE_TEMPLATE = """
 void {custom_op_name}(
     const Ort::Custom::CudaContext& cuda_ctx,
     // base input
-    const Ort::Custom::Tensor<{dtype}>& a,
+    const Ort::Custom::Tensor<{cpp_dtype}>& a,
     // other inputs
     {input_params}
     // attributes
     {attr_params}
     // output
-    Ort::Custom::Tensor<{dtype}>& y) {{
+    Ort::Custom::Tensor<{cpp_dtype}>& y) {{
 
   // output shape is the same as input shape
   // true because we only support limited one-directional broadcasting
@@ -174,9 +174,9 @@ void {custom_op_name}(
 }}
 """
 
-INPUT_PARAM = "const Ort::Custom::Tensor<{dtype}>& {input_name}"
+INPUT_PARAM = "const Ort::Custom::Tensor<{cpp_dtype}>& {input_name}"
 
-ATTR_PARAM = "{attr_dtype} {attr_name}"
+ATTR_PARAM = "{attr_cpp_dtype} {attr_name}"
 
 INPUT_SHAPE_VALIDATION = "ValidateElementwiseShapes(y_shape, {input_name}.Shape());"
 

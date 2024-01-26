@@ -9,7 +9,7 @@ from olive.passes.onnx.triton_fusion.codegen.ops import get_num_op_inputs, get_o
 from olive.passes.onnx.triton_fusion.utils import TL_DTYPE_MAP, create_triton_kernel_name, join_params
 
 
-def create_template_arg(op: str, op_idx: int, in_ptr: str, out_ptr: str) -> Dict:
+def get_op_args(op: str, op_idx: int, in_ptr: str, out_ptr: str, dtype: str) -> Dict:
     """Create the op related template arguments to use in the fused op template.
 
     Currently, we only support elementwise ops.
@@ -24,7 +24,16 @@ def create_template_arg(op: str, op_idx: int, in_ptr: str, out_ptr: str) -> Dict
     # args to be generate the op code
     code_args = {"in0": in_ptr}
     # args to be used in the full template
-    template_args = {"op_name": op.lower(), "ptr_param": None, "numel_param": None, "attr_params": [], "code": None}
+    template_args = {
+        "op_name": op.lower(),
+        "ptr_param": None,
+        "numel_param": None,
+        "attr_params": [],
+        "code": None,
+        "ptr_dtype": None,
+        "numel_dtype": None,
+        "attr_dtypes": [],
+    }
 
     # create arg for second input if exists
     if num_inputs == 2:
@@ -35,6 +44,8 @@ def create_template_arg(op: str, op_idx: int, in_ptr: str, out_ptr: str) -> Dict
         code_args["in1_numel"] = f"{in1}_numel"
         template_args["ptr_param"] = f"{in1}_ptr"
         template_args["numel_param"] = f"{in1}_numel"
+        template_args["ptr_dtype"] = f"*{dtype}"
+        template_args["numel_dtype"] = "i32"
 
     # create unique temp var if needed
     for tmp_idx in range(op_info.num_temp_vars):
@@ -42,10 +53,11 @@ def create_template_arg(op: str, op_idx: int, in_ptr: str, out_ptr: str) -> Dict
         code_args[f"tmp{tmp_idx}"] = tmp_ptr
 
     # create args for attributes if any
-    for attr_name, _ in op_info.attributes or []:
+    for attr_name, attr_dtype in op_info.attributes or []:
         attr_arg = f"{unique_op_name}_{attr_name}"
         code_args[attr_name] = attr_arg
         template_args["attr_params"].append(attr_arg)
+        template_args["attr_dtypes"].append(attr_dtype)
 
     # create operator code
     operator_code = ""
@@ -77,22 +89,30 @@ def create_kernel(base_op: str, fused_ops: List[str], dtype: str) -> Tuple[str, 
     """
     op_names = [base_op, *fused_ops]
     template = templates.MATMUL_TEMPLATE if base_op == "MatMul" else templates.ELEMENTWISE_TEMPLATE
+    signature_template = templates.MATMUL_SIGNATURE if base_op == "MatMul" else templates.ELEMENTWISE_SIGNATURE
+    grid = templates.MATMUL_GRID if base_op == "MatMul" else templates.ELEMENTWISE_GRID
 
     # create args for fused ops
     ptr_params = []
     numel_params = []
     attr_params = []
     codes = []
+    ptr_dtypes = []
+    numel_dtypes = []
+    attr_dtypes = []
     for op_idx, op in enumerate(fused_ops if base_op == "MatMul" else op_names):
-        template_args = create_template_arg(op, op_idx, "y", "y")
+        template_args = get_op_args(op, op_idx, "y", "y", dtype)
         if template_args["ptr_param"]:
             ptr_params.append(template_args["ptr_param"])
             numel_params.append(template_args["numel_param"])
+            ptr_dtypes.append(template_args["ptr_dtype"])
+            numel_dtypes.append(template_args["numel_dtype"])
         attr_params.extend(template_args["attr_params"] or [])
+        attr_dtypes.extend(template_args["attr_dtypes"] or [])
         codes.append(template_args["code"])
     kernel_name = create_triton_kernel_name(op_names, dtype)
     template_args = {
-        "y_dtype": TL_DTYPE_MAP[dtype],
+        "tl_dtype": TL_DTYPE_MAP[dtype],
         "fused_ops_str": ", ".join(op_names),
         "kernel_name": kernel_name,
         "ptr_params": join_params(ptr_params),
@@ -105,5 +125,16 @@ def create_kernel(base_op: str, fused_ops: List[str], dtype: str) -> Tuple[str, 
             default="# No fused op" if base_op == "MatMul" else "# This should not happen!",
         ),
     }
+    signature_args = {
+        "dtype": dtype,
+        "ptr_dtypes": join_params(ptr_dtypes, joiner=", ", end=", ", default=""),
+        "numel_dtypes": join_params(numel_dtypes, joiner=", ", end=", ", default=""),
+        "attr_dtypes": join_params(attr_dtypes, joiner=", ", end=", ", default=""),
+    }
 
-    return {"kernel_name": kernel_name, "kernel_code": template.format(**template_args)}
+    return {
+        "kernel_name": kernel_name,
+        "kernel_code": template.format(**template_args),
+        "signature": signature_template.format(**signature_args),
+        "grid": grid,
+    }

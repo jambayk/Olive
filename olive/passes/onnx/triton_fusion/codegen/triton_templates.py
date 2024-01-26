@@ -50,10 +50,14 @@ def {kernel_name}(
 
     # -----------------------------------------------------------
     # Write back the output tensor Y with masks.
-    y = y.to({y_dtype})
+    y = y.to({tl_dtype})
     y_ptrs = y_ptr + y_idxs
     tl.store(y_ptrs, y, mask=y_mask)
 """
+
+ELEMENTWISE_SIGNATURE = "*{dtype}, {ptr_dtypes}*{dtype}, i32, {numel_dtypes}{attr_dtypes}{{BLOCK_SIZE}}"
+
+ELEMENTWISE_GRID = "((a_numel + {BLOCK_SIZE} - 1) / {BLOCK_SIZE}), 1, 1"
 
 MATMUL_TEMPLATE = """
 import triton
@@ -147,10 +151,17 @@ def {kernel_name}(
 
     # -----------------------------------------------------------
     # Write back the block of the output matrix Y with masks.
-    y = y.to({y_dtype})
+    y = y.to({tl_dtype})
     y_ptrs = y_ptr + y_idxs
     tl.store(y_ptrs, y, mask=y_mask)
 """
+
+MATMUL_SIGNATURE = (
+    "*{dtype}, *{dtype}, {ptr_dtypes}*{dtype}, i32, i32, i32, {numel_dtypes}{attr_dtypes}{{BLOCK_SIZE_M}},"
+    " {{BLOCK_SIZE_N}}, {{BLOCK_SIZE_K}}, {{GROUP_SIZE_M}}"
+)
+
+MATMUL_GRID = "((M + {BLOCK_SIZE_M} - 1) / {BLOCK_SIZE_M} * (N + {BLOCK_SIZE_N} - 1) / {BLOCK_SIZE_N}), 1, 1"
 
 FUSED_OP_TWO_INPUT_TEMPLATE = """
     # load the second input tensor
