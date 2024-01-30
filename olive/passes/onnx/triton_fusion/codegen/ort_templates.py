@@ -22,9 +22,9 @@ CUSTOM_OP_SKELETON = """
 
 using namespace Ort::Custom;
 
-#define CUSTOM_ENFORCE(cond, msg)  \
-  if (!(cond)) {{                   \
-    throw std::runtime_error(msg); \
+#define CUSTOM_ENFORCE(cond, msg)  \\
+  if (!(cond)) {{                   \\
+    throw std::runtime_error(msg); \\
   }}
 
 void ValidateElementwiseShapes(
@@ -61,7 +61,6 @@ namespace OliveTritonFusion {{
 // Define Custom Ops
 {custom_op_defs}
 
-
 // Register Custom Ops
 void RegisterOps(Ort::CustomOpDomain& domain) {{
   {custom_op_registrations}
@@ -77,8 +76,7 @@ CUSTOM_OP_REGISTRATION = """
   static const std::unique_ptr<OrtLiteCustomOp> c_{custom_op_name}{{
     Ort::Custom::CreateLiteCustomOp("{custom_op_name}", "CUDAExecutionProvider", {custom_op_name})
   }};
-  domain.Add(c_CustomOpOne.get());
-"""
+  domain.Add(c_{custom_op_name}.get());"""
 
 MATMUL_TEMPLATE = """
 void {custom_op_name}(
@@ -123,8 +121,8 @@ void {custom_op_name}(
   load_{kernel_name}();
   CUresult ret = {kernel_name}(
       cuda_ctx.cuda_stream,
-      reinterpret_cast<CUdeviceptr>(x.DataRaw()),
-      reinterpret_cast<CUdeviceptr>(y.DataRaw()),
+      reinterpret_cast<CUdeviceptr>(a.DataRaw()),
+      reinterpret_cast<CUdeviceptr>(b.DataRaw()),
       {input_args}
       reinterpret_cast<CUdeviceptr>(y_raw),
       M, N, K,
@@ -160,7 +158,7 @@ void {custom_op_name}(
 
   // call the kernel
   load_{kernel_name}();
-  CUresult ret = {kernel_name}_default(
+  CUresult ret = {kernel_name}(
       cuda_ctx.cuda_stream,
       reinterpret_cast<CUdeviceptr>(a.DataRaw()),
       {input_args}
@@ -169,7 +167,7 @@ void {custom_op_name}(
       {numel_args}
       {attr_args}
       0);
-  CUSTOM_ENFORCE(ret == CUDA_SUCCESS, "{kernel_name}_default failed");
+  CUSTOM_ENFORCE(ret == CUDA_SUCCESS, "{kernel_name} failed");
   unload_{kernel_name}();
 }}
 """

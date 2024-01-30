@@ -7,9 +7,10 @@ from typing import Dict
 from olive.passes.onnx.triton_fusion.codegen.ops import ELEMENTWISE_OPS, ELEMENTWISE_TWO_INPUT_OPS
 from olive.passes.onnx.triton_fusion.codegen.ort_generator import create_custom_op
 from olive.passes.onnx.triton_fusion.codegen.triton_generator import create_kernel
+from olive.passes.onnx.triton_fusion.utils import create_custom_op_name
 
 
-class Fuser:
+class Fusion:
     def __init__(self, base_op: str, dtype: str):
         assert self.is_valid_base_op(base_op), f"Unsupported base op: {base_op}"
         self.base_op = base_op
@@ -30,6 +31,9 @@ class Fuser:
 
     def get_triton_kernel(self) -> Dict:
         return create_kernel(self.base_op, self.fused_ops, self.dtype)
+
+    def get_custom_op_name(self):
+        return create_custom_op_name([self.base_op, *self.fused_ops], self.dtype)
 
     def get_custom_op(self) -> Dict:
         return create_custom_op(self.base_op, self.fused_ops, self.dtype)

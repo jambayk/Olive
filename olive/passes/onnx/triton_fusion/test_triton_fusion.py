@@ -4,12 +4,16 @@
 # --------------------------------------------------------------------------
 import tempfile
 import time
+from pathlib import Path
 
 import numpy as np
 import onnx
 import onnxruntime as ort
 import torch
 from tqdm import tqdm
+
+from olive.passes.onnx.triton_fusion.builder import Builder
+from olive.passes.onnx.triton_fusion.fuser import Fusion
 
 
 class DummyModel(torch.nn.Module):
@@ -27,6 +31,14 @@ class DummyModel(torch.nn.Module):
 
 def main():
     with tempfile.TemporaryDirectory() as tmpdir:
+        # custom op dir
+        print("Building custom op...")
+        custom_op_dir = Path(tmpdir) / "custom_op"
+        fusion = Fusion("MatMul", "fp32")
+        builder = Builder([fusion], custom_op_dir)
+        lib_path = builder.build()
+
+        print("Exporting model...")
         # in_dim, h_dim, out_dim = 4096, 8192, 4096
         in_dim, h_dim, out_dim = 100, 200, 150
         batch_size = 16
@@ -39,29 +51,29 @@ def main():
 
         onnx_model = onnx.load(f"{tmpdir}/model.onnx")
 
-        # onnx.save(onnx_model, f"model.onnx")
-
+        print("Modifying model...")
         opset_import = onnx_model.opset_import
         has_custom_domain = False
         for opset in opset_import:
-            if opset.domain == "olive.triton_fusion":
+            if opset.domain == builder.get_domain():
                 has_custom_domain = True
         if not has_custom_domain:
-            opset_import.extend([onnx.helper.make_opsetid("olive.triton_fusion", 1)])
+            opset_import.extend([onnx.helper.make_opsetid(builder.get_domain(), 1)])
 
         # change the type of the op to TritonMatMul
         changed = 0
         for node in onnx_model.graph.node:
             if node.op_type == "MatMul":
-                node.domain = "olive.triton_fusion"
-                node.op_type = "TritonMatMul"
+                node.domain = builder.get_domain()
+                node.op_type = fusion.get_custom_op_name()
                 changed += 1
-        print(f"Changed {changed} nodes")
         onnx.save(onnx_model, f"{tmpdir}/model_custom.onnx")
+        print(f"Changed {changed} nodes")
 
         # run the model with onnxruntime
+        print("Running modified model...")
         sess_options = ort.SessionOptions()
-        sess_options.register_custom_ops_library("output/lib/libcustom_op.so")
+        sess_options.register_custom_ops_library(str(lib_path))
         custom_session = ort.InferenceSession(
             f"{tmpdir}/model_custom.onnx", sess_options=sess_options, providers=["CUDAExecutionProvider"]
         )
@@ -78,6 +90,7 @@ def main():
 
         print(f"Average latency: {np.mean(latencies)}")
 
+        print("Running original model...")
         original_session = ort.InferenceSession(f"{tmpdir}/model.onnx", providers=["CUDAExecutionProvider"])
 
         original_latencies = []
@@ -92,7 +105,7 @@ def main():
         # compare the outputs
         np.testing.assert_allclose(custom_outputs[0], original_outputs[0], atol=1e-2, rtol=0.0)
 
-        print("all close passed")
+        print("All close test passed")
 
     print("Done")
 

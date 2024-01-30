@@ -24,12 +24,7 @@ export ONNXRUNTIME_DIR=$PWD/onnxruntime
 
 Also requires the path to cuda to be set using `CUDA_HOME` environment variable. Only tested with CUDA 12.2
 
-## Build ORT Custom Ops
-```bash
-python build_custom_op.py
-```
-
 ## Run the example
 ```bash
-python test_custom_op.py
+python test_triton_fusion.py
 ```

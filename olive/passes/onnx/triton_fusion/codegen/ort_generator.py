@@ -101,3 +101,20 @@ def create_custom_op(base_op: str, fused_ops: List[str], dtype: str) -> Tuple[st
         "kernel_include": templates.CUSTOM_KERNEL_INCLUDE.format(kernel_name=kernel_name),
         "op_registration": templates.CUSTOM_OP_REGISTRATION.format(custom_op_name=custom_op_name),
     }
+
+
+def join_custom_ops(custom_ops_info: List[Dict]) -> str:
+    """Join all custom ops into one string."""
+    kernel_includes = []
+    op_defs = []
+    op_registrations = []
+    for op_info in custom_ops_info:
+        kernel_includes.append(op_info["kernel_include"])
+        op_defs.append(op_info["op_def"])
+        op_registrations.append(op_info["op_registration"])
+
+    return templates.CUSTOM_OP_SKELETON.format(
+        custom_kernel_includes="\n".join(kernel_includes),
+        custom_op_defs="\n".join(op_defs),
+        custom_op_registrations="\n".join(op_registrations),
+    )
