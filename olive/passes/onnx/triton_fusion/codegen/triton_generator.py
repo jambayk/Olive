@@ -4,9 +4,9 @@
 # --------------------------------------------------------------------------
 from typing import Dict, List, Tuple
 
-import olive.passes.onnx.auto_fusion.codegen.triton_templates as templates
-from olive.passes.onnx.auto_fusion.codegen.ops import get_num_op_inputs, get_op_info
-from olive.passes.onnx.auto_fusion.utils import TL_DTYPE_MAP, create_triton_kernel_name, join_params
+import olive.passes.onnx.triton_fusion.codegen.triton_templates as templates
+from olive.passes.onnx.triton_fusion.codegen.ops import get_num_op_inputs, get_op_info
+from olive.passes.onnx.triton_fusion.utils import TL_DTYPE_MAP, create_triton_kernel_name, join_params
 
 
 def get_op_args(op: str, op_idx: int, in_ptr: str, out_ptr: str, dtype: str) -> Dict:

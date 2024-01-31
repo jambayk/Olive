@@ -4,10 +4,10 @@
 # --------------------------------------------------------------------------
 from typing import Dict
 
-from olive.passes.onnx.auto_fusion.codegen.ops import ELEMENTWISE_OPS, ELEMENTWISE_TWO_INPUT_OPS
-from olive.passes.onnx.auto_fusion.codegen.ort_generator import create_custom_op
-from olive.passes.onnx.auto_fusion.codegen.triton_generator import create_kernel
-from olive.passes.onnx.auto_fusion.utils import create_custom_op_name
+from olive.passes.onnx.triton_fusion.codegen.ops import ELEMENTWISE_OPS, ELEMENTWISE_TWO_INPUT_OPS
+from olive.passes.onnx.triton_fusion.codegen.ort_generator import create_custom_op
+from olive.passes.onnx.triton_fusion.codegen.triton_generator import create_kernel
+from olive.passes.onnx.triton_fusion.utils import create_custom_op_name
 
 
 class Fusion:

@@ -26,5 +26,5 @@ Also requires the path to cuda to be set using `CUDA_HOME` environment variable.
 
 ## Run the example
 ```bash
-python test_auto_fusion.py
+python test_triton_fusion.py
 ```

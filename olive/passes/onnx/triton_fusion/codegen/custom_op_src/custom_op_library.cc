@@ -15,7 +15,7 @@
 #include "fusion_ops.h"
 // #include "onnxruntime_lite_custom_op.h"
 
-static const char* c_OpDomain = "olive.auto_fusion";
+static const char* c_OpDomain = "olive.triton_fusion";
 
 static void AddOrtCustomOpDomainToContainer(Ort::CustomOpDomain&& domain) {
   static std::vector<Ort::CustomOpDomain> ort_custom_op_domain_container;
