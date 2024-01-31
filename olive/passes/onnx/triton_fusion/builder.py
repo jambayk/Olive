@@ -47,7 +47,7 @@ class Builder:
             },
             "Elementwise": {
                 "num_stages": 5,
-                "num_warps": 2,
+                "num_warps": 4,
                 "BLOCK_SIZE": 128,
             },
         }
