@@ -90,9 +90,9 @@ def create_custom_op(base_op: str, fused_ops: List[str], dtype: str) -> Tuple[st
         "input_params": join_params(input_params, default=default_comment),
         "attr_params": join_params(attr_params, default=default_comment),
         "input_shape_validation": join_params(input_shape_validations, joiner="\n  ", end="", default=default_comment),
-        "input_args": join_params(input_args, joiner="\n      ", default=default_comment),
-        "numel_args": join_params(numel_args, joiner="\n      ", default=default_comment),
-        "attr_args": join_params(attr_args, joiner="\n      ", default=default_comment),
+        "input_args": join_params(input_args, default=default_comment),
+        "numel_args": join_params(numel_args, default=default_comment),
+        "attr_args": join_params(attr_args, default=default_comment),
     }
 
     return {

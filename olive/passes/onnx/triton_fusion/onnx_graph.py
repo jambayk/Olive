@@ -259,13 +259,22 @@ class OnnxDAG:
         return model, dags
 
     def _topological_sort_util(self, v: str, visited: Set[str], order: List[str]):
-        visited.add(v)
+        # keep track of the nodes to visit
+        stack = [v]
 
-        for neighbor in self.connections[v]:
-            if neighbor not in visited:
-                self._topological_sort_util(neighbor, visited, order)
+        while stack:
+            v = stack.pop()
+            visited.add(v)
 
-        order.insert(0, v)
+            for neighbor in self.connections[v]:
+                if neighbor not in visited:
+                    # remember to come back to this node
+                    stack.append(v)
+                    # visit the neighbor
+                    stack.append(neighbor)
+                    break
+            else:
+                order.insert(0, v)
 
     def topological_sort(self):
         visited = set()

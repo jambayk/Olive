@@ -9,12 +9,14 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Set, Tuple, Union
 
+import onnx
+
 from olive.hardware.accelerator import AcceleratorSpec
 from olive.model import ONNXModelHandler
 from olive.model.utils import resolve_onnx_path
 from olive.passes import Pass
 from olive.passes.onnx.common import get_external_data_config, model_proto_to_olive_model
-from olive.passes.onnx.triton_fusion import Builder, Fusion, OnnxDAG
+from olive.passes.onnx.triton_fusion import DOMAIN, Builder, Fusion, OnnxDAG
 from olive.passes.pass_config import PassConfigParam
 
 logger = logging.getLogger(__name__)
@@ -69,6 +71,8 @@ class AutoFusion(Pass):
         # fuse chains
         fusions = []
         for dtype, chain_type in ordered_chain_types:
+            # if chain_type[0] == "MatMul":
+            #     continue
             fusion = Fusion(dtype, chain_type[0], list(chain_type[1:]))
             num_fused = 0
             for dag_idx, node_names in fusable_chains[(dtype, chain_type)]:
@@ -87,6 +91,16 @@ class AutoFusion(Pass):
         for dag in dags:
             dag.update()
 
+        # update opset of model
+        opset_import = onnx_model.opset_import
+        has_custom_domain = False
+        for opset in opset_import:
+            if opset.domain == DOMAIN:
+                has_custom_domain = True
+        if not has_custom_domain:
+            opset_import.extend([onnx.helper.make_opsetid(DOMAIN, 1)])
+
+        custom_op_lib = None
         with tempfile.TemporaryDirectory() as temp_dir:
             logger.info("Building custom op library...")
             builder = Builder([f for f, _ in fusions], temp_dir)
@@ -94,38 +108,43 @@ class AutoFusion(Pass):
 
             Path(output_model_path).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(lib_path, Path(output_model_path).parent / Path(lib_path).name)
+            custom_op_lib = Path(lib_path).name
 
         # save the model to the output path and return the model
-        return model_proto_to_olive_model(onnx_model, output_model_path, config)
+        return model_proto_to_olive_model(onnx_model, output_model_path, config, custom_op_lib=custom_op_lib)
 
     @classmethod
     def _get_fusable_chains_util(
         cls, dag: OnnxDAG, v: str, visited: Set[str], chains: Dict[str, Tuple[List[str], List[str]]]
     ) -> None:
         """Find fusable chains from all nodes reachable from v."""
-        if v in visited:
-            return
+        stack = [v]
 
-        visited.add(v)
-        for neighbor in dag.connections[v]:
-            if neighbor not in visited:
-                cls._get_fusable_chains_util(dag, neighbor, visited, chains)
+        while stack:
+            v = stack.pop()
+            visited.add(v)
 
-        node = dag.nodes[v]
-        # check if node can be a base op
-        # we only consider nodes with a single output
-        if not Fusion.is_valid_base_op(node.op_type) or len(dag.connections[v]) != 1:
-            return
+            for neighbor in dag.connections[v]:
+                if neighbor not in visited:
+                    stack.append(v)
+                    stack.append(neighbor)
+                    break
+            else:
+                node = dag.nodes[v]
+                # check if node can be a base op
+                # we only consider nodes with a single output
+                if not Fusion.is_valid_base_op(node.op_type) or len(dag.connections[v]) != 1:
+                    continue
 
-        child = dag.connections[v][0]
-        child_node = dag.nodes[child]
-        if not Fusion.is_valid_fused_op(child_node.op_type):
-            return
+                child = dag.connections[v][0]
+                child_node = dag.nodes[child]
+                if not Fusion.is_valid_fused_op(child_node.op_type):
+                    continue
 
-        if child in chains:
-            chains[v] = ([v, *chains[child][0]], [node.op_type, *chains[child][1]])
-        else:
-            chains[v] = ([v, child], [node.op_type, child_node.op_type])
+                if child in chains:
+                    chains[v] = ([v, *chains[child][0]], [node.op_type, *chains[child][1]])
+                else:
+                    chains[v] = ([v, child], [node.op_type, child_node.op_type])
 
     @classmethod
     def get_fusable_chains(cls, dag: OnnxDAG) -> Dict[str, Tuple[List[str], List[str]]]:
