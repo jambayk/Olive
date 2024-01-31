@@ -78,7 +78,7 @@ class Fusion:
             self.get_custom_op_name(),
             inputs=inputs,
             outputs=outputs,
-            name="-".join([node.name for node in nodes]),
+            name="->".join([node.name for node in nodes]),
             domain=DOMAIN,
             **attributes,
         )

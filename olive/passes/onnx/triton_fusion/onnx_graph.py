@@ -276,3 +276,27 @@ class OnnxDAG:
                 self._topological_sort_util(v, visited, order)
 
         return order
+
+    def update(self):
+        """Update the graph proto with the latest nodes and connections."""
+        node_order = self.topological_sort()
+
+        nodes = [self.nodes[name].proto for name in node_order]
+        # assume inputs, outputs and initializers have not changed
+        value_info = []
+        for io in self.ios.values():
+            if io.source in [None, SpecialInput.INPUT, SpecialInput.INITIALIZER]:
+                # skip inputs, initializers
+                # skip if parent node is removed
+                continue
+            if not io.destination or SpecialOutput.OUTPUT in io.destination:
+                # skip output
+                # skip if destination nodes are removed
+                continue
+            value_info.append(io.proto)
+
+        # update the graph proto
+        self.proto.ClearField("node")
+        self.proto.node.extend(nodes)
+        self.proto.ClearField("value_info")
+        self.proto.value_info.extend(value_info)

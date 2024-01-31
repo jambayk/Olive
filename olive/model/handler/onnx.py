@@ -32,7 +32,7 @@ class ONNXModelHandler(OliveModelHandler, OnnxEpValidateMixin, OnnxGraphMixin):
     the mixin class OnnxGraphMixin is used to support onnx graph operations.
     """
 
-    json_config_keys: Tuple[str, ...] = ("onnx_file_name", "inference_settings", "use_ort_extensions")
+    json_config_keys: Tuple[str, ...] = ("onnx_file_name", "inference_settings", "use_ort_extensions", "custom_op_lib")
 
     def __init__(
         self,
@@ -41,6 +41,7 @@ class ONNXModelHandler(OliveModelHandler, OnnxEpValidateMixin, OnnxGraphMixin):
         inference_settings: Optional[dict] = None,
         use_ort_extensions: bool = False,
         model_attributes: Optional[Dict[str, Any]] = None,
+        custom_op_lib: Optional[str] = None,
     ):
         super().__init__(
             framework=Framework.ONNX,
@@ -51,6 +52,12 @@ class ONNXModelHandler(OliveModelHandler, OnnxEpValidateMixin, OnnxGraphMixin):
         self.inference_settings = inference_settings
         self.use_ort_extensions = use_ort_extensions
         self.onnx_file_name = onnx_file_name
+        self.custom_op_lib = custom_op_lib
+        if custom_op_lib:
+            assert Path(model_path).is_dir(), f"Custom op lib {custom_op_lib} requires a directory model path."
+            assert (
+                Path(model_path) / custom_op_lib
+            ).exists(), f"Custom op lib {custom_op_lib} does not exist in model path directory {model_path}."
 
         self.io_config = None
         self.graph = None
@@ -63,6 +70,12 @@ class ONNXModelHandler(OliveModelHandler, OnnxEpValidateMixin, OnnxGraphMixin):
     def model_path(self) -> str:
         model_path = super().model_path
         return get_onnx_file_path(model_path, self.onnx_file_name) if model_path else None
+
+    @property
+    def custom_op_lib_path(self) -> Optional[str]:
+        if self.custom_op_lib:
+            return str(Path(self.model_path) / self.custom_op_lib)
+        return None
 
     def load_model(self, rank: int = None) -> ModelProto:
         return onnx.load(self.model_path)
@@ -106,7 +119,9 @@ class ONNXModelHandler(OliveModelHandler, OnnxEpValidateMixin, OnnxGraphMixin):
                     provider_options[i] = {"device_id": str(rank)}
         inference_settings["execution_provider"] = execution_providers
         inference_settings["provider_options"] = provider_options
-        session = get_ort_inference_session(self.model_path, inference_settings, self.use_ort_extensions)
+        session = get_ort_inference_session(
+            self.model_path, inference_settings, self.use_ort_extensions, self.custom_op_lib_path
+        )
         check_ort_fallback(session, execution_providers)
         return session
 

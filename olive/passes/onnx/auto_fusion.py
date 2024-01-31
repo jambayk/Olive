@@ -2,15 +2,22 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 # --------------------------------------------------------------------------
+import logging
+import shutil
+import tempfile
 from collections import defaultdict
+from pathlib import Path
 from typing import Any, Dict, List, Set, Tuple, Union
 
 from olive.hardware.accelerator import AcceleratorSpec
 from olive.model import ONNXModelHandler
+from olive.model.utils import resolve_onnx_path
 from olive.passes import Pass
-from olive.passes.onnx.common import get_external_data_config
-from olive.passes.onnx.triton_fusion import Fusion, OnnxDAG
+from olive.passes.onnx.common import get_external_data_config, model_proto_to_olive_model
+from olive.passes.onnx.triton_fusion import Builder, Fusion, OnnxDAG
 from olive.passes.pass_config import PassConfigParam
+
+logger = logging.getLogger(__name__)
 
 
 class AutoFusion(Pass):
@@ -31,6 +38,8 @@ class AutoFusion(Pass):
     def _run_for_config(
         self, model: ONNXModelHandler, data_root: str, config: Dict[str, Any], output_model_path: str
     ) -> ONNXModelHandler:
+        output_model_path = resolve_onnx_path(output_model_path, Path(model.model_path).name)
+
         onnx_model, dags = OnnxDAG.from_model_path(model.model_path)
 
         # get fusable chains
@@ -55,6 +64,7 @@ class AutoFusion(Pass):
             key=lambda x: (x[1][0] == "MatMul", len(fusable_chains[x]), len(x[1])),
             reverse=True,
         )
+        logger.debug("Fusion candidates: \n" + "\n".join(f"{k}: {len(fusable_chains[k])}" for k in ordered_chain_types))
 
         # fuse chains
         fusions = []
@@ -68,9 +78,25 @@ class AutoFusion(Pass):
                 fused_node = fusion.fuse_nodes(node_protos)
                 dags[dag_idx].replace_nodes(node_names, fused_node)
                 num_fused += 1
-            fusions.append((fusion, num_fused))
-        for fusion, num_fused in fusions:
-            print(fusion.base_op, fusion.fused_ops, num_fused)
+            if num_fused > 0:
+                fusions.append((fusion, num_fused))
+        logger.info(
+            "Fusions: \n"
+            + "\n".join(f"{(f.dtype, (f.base_op, *f.fused_ops))}: {num_fused}" for f, num_fused in fusions)
+        )
+        for dag in dags:
+            dag.update()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            logger.info("Building custom op library...")
+            builder = Builder([f for f, _ in fusions], temp_dir)
+            lib_path = builder.build()
+
+            Path(output_model_path).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(lib_path, Path(output_model_path).parent / Path(lib_path).name)
+
+        # save the model to the output path and return the model
+        return model_proto_to_olive_model(onnx_model, output_model_path, config)
 
     @classmethod
     def _get_fusable_chains_util(
