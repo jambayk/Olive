@@ -3,7 +3,7 @@
 # Licensed under the MIT License.
 # --------------------------------------------------------------------------
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Set, Tuple, Union
 
 from olive.hardware.accelerator import AcceleratorSpec
 from olive.model import ONNXModelHandler
@@ -38,9 +38,10 @@ class AutoFusion(Pass):
         for dag_idx, dag in enumerate(dags):
             chains = self.get_fusable_chains(dag)
             for node_names, node_types in chains.values():
-                dtype = self.check_shapes_and_types(dag, node_names)
-                if dtype is not None:
-                    fusable_chains[(dtype, tuple(node_types))].append((dag_idx, node_names))
+                max_valid_len, dtype = self.check_shapes_and_types(dag, node_names)
+                # only consider chains equal to or longer than 2
+                for i in range(2, max_valid_len + 1):
+                    fusable_chains[(dtype, tuple(node_types[:i]))].append((dag_idx, node_names[:i]))
 
         # only consider chains that occur more than min_occurrence times
         for node_types in list(fusable_chains.keys()):
@@ -68,6 +69,8 @@ class AutoFusion(Pass):
                 dags[dag_idx].replace_nodes(node_names, fused_node)
                 num_fused += 1
             fusions.append((fusion, num_fused))
+        for fusion, num_fused in fusions:
+            print(fusion.base_op, fusion.fused_ops, num_fused)
 
     @classmethod
     def _get_fusable_chains_util(
@@ -144,7 +147,7 @@ class AutoFusion(Pass):
         return not mismatched_dims
 
     @classmethod
-    def check_shapes_and_types(cls, dag: OnnxDAG, node_names: List[str]) -> Optional[str]:
+    def check_shapes_and_types(cls, dag: OnnxDAG, node_names: List[str]) -> Tuple[int, str]:
         """Check if the chain is valid for fusion.
 
         Rules:
@@ -156,38 +159,47 @@ class AutoFusion(Pass):
 
         :param dag: The ONNX graph.
         :param node_names: The names of the nodes in the chain.
-        :return: Data type of the chain if valid, None otherwise.
+        :return: (max_valid_len, dtype) where max_valid_len is the maximum length of the valid chain
+            and dtype is the data type of the inputs and outputs.
         """
         # base node is the first node in the chain
         base = node_names[0]
         dtype = dag.get_input_dtypes(base)[0]
         a_shape = dag.get_output_shapes(base)[0]
 
+        max_valid_len = 0
         for node_idx, name in enumerate(node_names):
             # check if the data type is the same
             if not all(dtype == dt for dt in dag.get_input_dtypes(name) + dag.get_output_dtypes(name)):
-                return None
+                break
 
             # check if the shapes are broadcastable
-            # skip base node
+
             if node_idx == 0:
+                # skip base node
+                max_valid_len += 1
                 continue
 
             inputs = dag.nodes[name].inputs
             if len(inputs) == 1:
+                # single input nodes are always valid
+                max_valid_len += 1
                 continue
+
             if len(inputs) > 2:
                 # should not reach since we only consider two input nodes
-                return None
+                break
 
             prev_output = dag.nodes[node_names[node_idx - 1]].outputs[0]
             if not Fusion.is_commutative_op(dag.nodes[name].op_type) and dag.nodes[name].inputs[0] != prev_output:
                 # output is not the first input
-                return None
+                break
 
             connection_idx = dag.nodes[name].inputs.index(prev_output)
             b_shape = dag.ios[inputs[1 - connection_idx]].shape
             if not cls.is_broadcastable(a_shape, b_shape):
-                return None
+                break
 
-        return dtype
+            max_valid_len += 1
+
+        return max_valid_len, dtype

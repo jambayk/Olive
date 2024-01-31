@@ -28,6 +28,7 @@ ELEMENTWISE_OPS = {
     "Exp": ElementwiseOp(triton_template="tl.exp({in0})"),
     "Floor": ElementwiseOp(triton_template="tl.math.floor({in0})"),
     "Log": ElementwiseOp(triton_template="tl.log({in0})"),
+    "Sqrt": ElementwiseOp(triton_template="tl.sqrt({in0})"),
     # Activation functions
     "Celu": ElementwiseOp(
         attributes=[("alpha", "fp32")],
