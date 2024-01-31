@@ -3,9 +3,10 @@
 # Licensed under the MIT License.
 # --------------------------------------------------------------------------
 import tempfile
+from collections import defaultdict
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Set, Tuple, Union
 
 import onnx
 from onnx import AttributeProto, GraphProto, NodeProto
@@ -59,6 +60,7 @@ class OnnxDAG:
     def __init__(self):
         self.nodes = {}
         self.ios = {}
+        self.graph = defaultdict(list)
 
     @staticmethod
     def _get_io_type_shape(io: "ValueInfoProto") -> Dict:
@@ -107,14 +109,18 @@ class OnnxDAG:
 
         This adds the node to the `nodes` attribute and connects them using the `ios` attribute.
         """
+        name = node.name
         onnx_node = OnnxNode(op_type=node.op_type, node=node, inputs=list(node.input), outputs=list(node.output))
-        self.nodes[node.name] = onnx_node
+        self.nodes[name] = onnx_node
 
         for i in node.input:
-            self.ios[i].destination.append(node.name)
+            self.ios[i].destination.append(name)
+            parent = self.ios[i].source
+            if parent not in [SpecialInput.INPUT, SpecialInput.INITIALIZER]:
+                self.graph[parent].append(name)
 
         for o in node.output:
-            self.ios[o].source = node.name
+            self.ios[o].source = name
 
     @classmethod
     def from_graph_proto(cls, graph: GraphProto) -> "OnnxDAG":
@@ -149,3 +155,22 @@ class OnnxDAG:
                             assert isinstance(g, GraphProto)
                             graph_queue.append(g)
         return model, dags
+
+    def _topological_sort_util(self, v: str, visited: Set[str], order: List[str]):
+        visited.add(v)
+
+        for neighbor in self.graph[v]:
+            if neighbor not in visited:
+                self._topological_sort_util(neighbor, visited, order)
+
+        order.insert(0, v)
+
+    def topological_sort(self):
+        visited = set()
+        order = []
+
+        for v in self.nodes:
+            if v not in visited:
+                self._topological_sort_util(v, visited, order)
+
+        return order

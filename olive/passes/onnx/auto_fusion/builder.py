@@ -11,9 +11,9 @@ from typing import List, Union
 import triton
 
 from olive.common.utils import run_subprocess
-from olive.passes.onnx.triton_fusion.codegen.ort_generator import join_custom_ops
-from olive.passes.onnx.triton_fusion.fuser import Fusion
-from olive.passes.onnx.triton_fusion.utils import get_env_path
+from olive.passes.onnx.auto_fusion.codegen.ort_generator import join_custom_ops
+from olive.passes.onnx.auto_fusion.fuser import Fusion
+from olive.passes.onnx.auto_fusion.utils import get_env_path
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class Builder:
         }
 
     def get_domain(self):
-        return "olive.triton_fusion"
+        return "olive.auto_fusion"
 
     def prepare_triton_kernels(self):
         for fusion in self.fusions:

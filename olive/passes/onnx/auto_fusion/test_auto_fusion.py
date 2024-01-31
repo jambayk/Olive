@@ -12,8 +12,8 @@ import onnxruntime as ort
 import torch
 from tqdm import tqdm
 
-from olive.passes.onnx.triton_fusion.builder import Builder
-from olive.passes.onnx.triton_fusion.fuser import Fusion
+from olive.passes.onnx.auto_fusion.builder import Builder
+from olive.passes.onnx.auto_fusion.fuser import Fusion
 
 
 class DummyModel(torch.nn.Module):
