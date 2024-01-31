@@ -14,6 +14,7 @@ from tqdm import tqdm
 
 from olive.passes.onnx.triton_fusion.builder import Builder
 from olive.passes.onnx.triton_fusion.fuser import Fusion
+from olive.passes.onnx.triton_fusion.utils import DOMAIN
 
 
 class DummyModel(torch.nn.Module):
@@ -34,7 +35,7 @@ def main():
         # custom op dir
         print("Building custom op...")
         custom_op_dir = Path(tmpdir) / "custom_op"
-        fusion = Fusion("MatMul", "fp32")
+        fusion = Fusion("fp32", "MatMul")
         builder = Builder([fusion], custom_op_dir)
         lib_path = builder.build()
 
@@ -55,16 +56,16 @@ def main():
         opset_import = onnx_model.opset_import
         has_custom_domain = False
         for opset in opset_import:
-            if opset.domain == builder.get_domain():
+            if opset.domain == DOMAIN:
                 has_custom_domain = True
         if not has_custom_domain:
-            opset_import.extend([onnx.helper.make_opsetid(builder.get_domain(), 1)])
+            opset_import.extend([onnx.helper.make_opsetid(DOMAIN, 1)])
 
         # change the type of the op to TritonMatMul
         changed = 0
         for node in onnx_model.graph.node:
             if node.op_type == "MatMul":
-                node.domain = builder.get_domain()
+                node.domain = DOMAIN
                 node.op_type = fusion.get_custom_op_name()
                 changed += 1
         onnx.save(onnx_model, f"{tmpdir}/model_custom.onnx")

@@ -24,6 +24,18 @@ CPP_DTYPE_MAP = {
     "bf16": "Ort::BFloat16_t",
 }
 
+NP_DTYPE_REVERSE_MAP = {
+    "float32": "fp32",
+    "float16": "fp16",
+    "int32": "int32",
+    "int64": "int64",
+    "bool": "bool",
+    # bfloat16 is not supported in numpy
+    # "bfloat16": "bf16",
+}
+
+DOMAIN = "olive.triton_fusion"
+
 
 def get_env_path(var_name):
     if not os.environ.get(var_name):

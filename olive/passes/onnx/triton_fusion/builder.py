@@ -52,9 +52,6 @@ class Builder:
             },
         }
 
-    def get_domain(self):
-        return "olive.triton_fusion"
-
     def prepare_triton_kernels(self):
         for fusion in self.fusions:
             # code gen kernel

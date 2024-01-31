@@ -16,6 +16,7 @@ class ElementwiseOp(ConfigBase):
     attributes: List[Tuple[str, str]] = None
     num_temp_vars: int = 0
     triton_template: Union[str, List[str]]
+    is_commutative: bool = True
 
 
 # elementwise operations that have a single input
@@ -65,10 +66,10 @@ ELEMENTWISE_OPS = {
 # as the first input
 ELEMENTWISE_TWO_INPUT_OPS = {
     "Add": ElementwiseOp(triton_template="{in0} + {in1}"),
-    "Div": ElementwiseOp(triton_template="{in0} / {in1}"),
+    "Div": ElementwiseOp(triton_template="{in0} / {in1}", is_commutative=False),
     "Mul": ElementwiseOp(triton_template="{in0} * {in1}"),
-    "Pow": ElementwiseOp(triton_template="tl.pow({in0}, {in1})"),
-    "Sub": ElementwiseOp(triton_template="{in0} - {in1}"),
+    "Pow": ElementwiseOp(triton_template="tl.pow({in0}, {in1})", is_commutative=False),
+    "Sub": ElementwiseOp(triton_template="{in0} - {in1}", is_commutative=False),
 }
 
 
@@ -88,3 +89,7 @@ def get_num_op_inputs(op: str) -> int:
         return 2
     else:
         raise ValueError(f"Unsupported elementwise op: {op}")
+
+
+def is_commutative_op(op: str) -> bool:
+    return get_op_info(op).is_commutative
