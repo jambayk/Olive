@@ -14,12 +14,6 @@ Performs optimization pipeline:
 
 Refer to the instructions in the [examples README](../README.md) to clone the repository and install Olive.
 
-### Install extra dependencies
-Install the necessary python packages:
-```bash
-python -m pip install -r requirements.txt
-```
-
 ## Install onnxruntime
 This example requires the latest nightly build of ort-nightly-gpu
 ```bash
@@ -29,8 +23,14 @@ pip uninstall -y onnxruntime-gpu onnxruntime ort-nightly-gpu ort-nightly
 pip install ort-nightly-gpu --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ORT-Nightly/pypi/simple/
 ```
 
+### Install extra dependencies
+Install the necessary python packages:
+```bash
+python -m pip install -r requirements.txt
+```
+
 ## Install triton-nightly
-This example requires the latest nightly build of triton.
+This example requires the latest nightly build of triton. Note: This needs to be done last to avoid reinstalling the stable version of triton.
 ```bash
 # Uninstall previous triton packages
 pip uninstall -y triton triton-nightly
