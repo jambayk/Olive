@@ -11,9 +11,9 @@ from typing import List, Union
 import triton
 
 from olive.common.utils import run_subprocess
-from olive.passes.onnx.triton_fusion.codegen.ort_generator import join_custom_ops
-from olive.passes.onnx.triton_fusion.fuser import Fusion
-from olive.passes.onnx.triton_fusion.utils import get_env_path
+from olive.passes.onnx.auto_fusion_utils.codegen.ort_generator import join_custom_ops
+from olive.passes.onnx.auto_fusion_utils.fuser import Fusion
+from olive.passes.onnx.auto_fusion_utils.utils import get_env_path
 
 logger = logging.getLogger(__name__)
 

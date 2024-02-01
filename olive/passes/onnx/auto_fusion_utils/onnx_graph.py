@@ -15,7 +15,7 @@ from onnx.shape_inference import infer_shapes_path
 from olive.common.config_utils import ConfigBase
 from olive.common.pydantic_v1 import Field
 from olive.common.utils import onnx_dtype_to_np_dtype
-from olive.passes.onnx.triton_fusion.utils import NP_DTYPE_REVERSE_MAP
+from olive.passes.onnx.auto_fusion_utils.utils import NP_DTYPE_REVERSE_MAP
 
 if TYPE_CHECKING:
     from onnx import ModelProto

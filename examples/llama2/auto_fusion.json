@@ -71,8 +71,7 @@
                 "target_opset": 17,
                 "save_as_external_data": true,
                 "all_tensors_to_one_file": true,
-                "torch_dtype": "float32",
-                "use_device": "cuda"
+                "torch_dtype": "float32"
             }
         },
         "auto_fusion": {

@@ -34,7 +34,7 @@ NP_DTYPE_REVERSE_MAP = {
     # "bfloat16": "bf16",
 }
 
-DOMAIN = "olive.triton_fusion"
+DOMAIN = "olive.auto_fusion"
 
 
 def get_env_path(var_name):

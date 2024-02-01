@@ -7,10 +7,14 @@ from typing import Dict, List, Optional
 import onnx
 from onnx import NodeProto
 
-from olive.passes.onnx.triton_fusion.codegen.ops import ELEMENTWISE_OPS, ELEMENTWISE_TWO_INPUT_OPS, is_commutative_op
-from olive.passes.onnx.triton_fusion.codegen.ort_generator import create_custom_op
-from olive.passes.onnx.triton_fusion.codegen.triton_generator import create_kernel
-from olive.passes.onnx.triton_fusion.utils import DOMAIN, create_custom_op_name
+from olive.passes.onnx.auto_fusion_utils.codegen.ops import (
+    ELEMENTWISE_OPS,
+    ELEMENTWISE_TWO_INPUT_OPS,
+    is_commutative_op,
+)
+from olive.passes.onnx.auto_fusion_utils.codegen.ort_generator import create_custom_op
+from olive.passes.onnx.auto_fusion_utils.codegen.triton_generator import create_kernel
+from olive.passes.onnx.auto_fusion_utils.utils import DOMAIN, create_custom_op_name
 
 
 class Fusion:

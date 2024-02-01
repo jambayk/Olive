@@ -4,9 +4,9 @@
 # --------------------------------------------------------------------------
 from typing import Dict, List, Tuple
 
-import olive.passes.onnx.triton_fusion.codegen.ort_templates as templates
-from olive.passes.onnx.triton_fusion.codegen.ops import get_num_op_inputs, get_op_info
-from olive.passes.onnx.triton_fusion.utils import (
+import olive.passes.onnx.auto_fusion_utils.codegen.ort_templates as templates
+from olive.passes.onnx.auto_fusion_utils.codegen.ops import get_num_op_inputs, get_op_info
+from olive.passes.onnx.auto_fusion_utils.utils import (
     CPP_DTYPE_MAP,
     create_custom_op_name,
     create_triton_kernel_name,
