@@ -40,9 +40,9 @@ pip install -U --index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/
 
 ## Clone ONNX Runtime repository
 ```bash
-git clone https://github.com/microsoft/onnxruntime.git
+git clone https://github.com/microsoft/onnxruntime.git onnxruntime-repo
 # set ONNXRUNTIME_DIR to the path of the cloned repository
-export ONNXRUNTIME_DIR=$PWD/onnxruntime
+export ONNXRUNTIME_DIR=$PWD/onnxruntime-repo
 ```
 
 Also requires the path to cuda to be set using `CUDA_HOME` environment variable. Only tested with CUDA 12.2
