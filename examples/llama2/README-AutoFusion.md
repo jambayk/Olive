@@ -51,3 +51,12 @@ Also requires the path to cuda to be set using `CUDA_HOME` environment variable.
 ```bash
 python -m olive.workflows.run --config llama2_auto_fusion.json
 ```
+
+**Note**: If you want to package the model, custom operator library and sample code into a zip file, add the following config option under `"engine"` in the config file:
+```json
+"packaging_config": {
+    "type": "Zipfile",
+    "name": "open_llama_3b_auto_fusion"
+}
+```
+It might take a while to compress the files into a zip file.

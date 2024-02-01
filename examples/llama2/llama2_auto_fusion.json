@@ -75,8 +75,7 @@
             }
         },
         "auto_fusion": {
-            "type": "AutoFusion",
-            "clean_run_cache": true
+            "type": "AutoFusion"
         }
     },
     "engine": {
