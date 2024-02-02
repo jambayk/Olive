@@ -30,27 +30,28 @@ ELEMENTWISE_OPS = {
     "Log": ElementwiseOp(triton_template="tl.log({in0})"),
     "Sqrt": ElementwiseOp(triton_template="tl.sqrt({in0})"),
     # Activation functions
-    "Celu": ElementwiseOp(
-        attributes=[("alpha", "fp32")],
-        triton_template="tl.where({in0} > 0.0, {in0}, {alpha} * (tl.exp({in0} / {alpha}) - 1.0))",
-    ),
-    "Elu": ElementwiseOp(
-        attributes=[("alpha", "fp32")],
-        triton_template="tl.where({in0} > 0.0, {in0}, {alpha} * (tl.exp({in0}) - 1.0))",
-    ),
-    "LeakyRelu": ElementwiseOp(
-        attributes=[("alpha", "fp32")], triton_template="tl.where({in0} > 0.0, {in0}, {alpha} * {in0})"
-    ),
+    # TODO(jambayk): re-enable operators with attributes with custom op api supports it
+    # "Celu": ElementwiseOp(
+    #     attributes=[("alpha", "fp32")],
+    #     triton_template="tl.where({in0} > 0.0, {in0}, {alpha} * (tl.exp({in0} / {alpha}) - 1.0))",
+    # ),
+    # "Elu": ElementwiseOp(
+    #     attributes=[("alpha", "fp32")],
+    #     triton_template="tl.where({in0} > 0.0, {in0}, {alpha} * (tl.exp({in0}) - 1.0))",
+    # ),
+    # "LeakyRelu": ElementwiseOp(
+    #     attributes=[("alpha", "fp32")], triton_template="tl.where({in0} > 0.0, {in0}, {alpha} * {in0})"
+    # ),
     "Relu": ElementwiseOp(triton_template="tl.where({in0} > 0, {in0}, 0.0)"),
-    "Selu": ElementwiseOp(
-        attributes=[("alpha", "fp32"), ("gamma", "fp32")],
-        triton_template="tl.where({in0} > 0.0, {gamma} * {in0}, {gamma} * ({alpha} * tl.exp({in0}) - {alpha}))",
-    ),
-    # TODO(jambayk): Investigate support for string attributes like "approximation" for Gelu
-    "HardSigmoid": ElementwiseOp(
-        attributes=[("alpha", "fp32"), ("beta", "fp32")],
-        triton_template="tl.where({in0} < -{beta}, 0.0, tl.where({in0} > {beta}, 1.0, {alpha} * {in0} + {beta}))",
-    ),
+    # "Selu": ElementwiseOp(
+    #     attributes=[("alpha", "fp32"), ("gamma", "fp32")],
+    #     triton_template="tl.where({in0} > 0.0, {gamma} * {in0}, {gamma} * ({alpha} * tl.exp({in0}) - {alpha}))",
+    # ),
+    # # TODO(jambayk): Investigate support for string attributes like "approximation" for Gelu
+    # "HardSigmoid": ElementwiseOp(
+    #     attributes=[("alpha", "fp32"), ("beta", "fp32")],
+    #     triton_template="tl.where({in0} < -{beta}, 0.0, tl.where({in0} > {beta}, 1.0, {alpha} * {in0} + {beta}))",
+    # ),
     "Sigmoid": ElementwiseOp(triton_template="tl.sigmoid({in0})"),
     # sign functions
     "Neg": ElementwiseOp(triton_template="-{in0}"),
