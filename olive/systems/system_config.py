@@ -11,7 +11,7 @@ import olive.systems.system_alias as system_alias
 from olive.azureml.azureml_client import AzureMLClientConfig
 from olive.common.config_utils import ConfigBase, validate_config
 from olive.common.pydantic_v1 import root_validator, validator
-from olive.systems.common import AzureMLDockerConfig, LocalDockerConfig, SystemType
+from olive.systems.common import AzureMLDockerConfig, AzureMLEnvironmentConfig, LocalDockerConfig, SystemType
 
 
 class TargetUserConfig(ConfigBase):
@@ -34,6 +34,7 @@ class AzureMLTargetUserConfig(TargetUserConfig):
     azureml_client_config: AzureMLClientConfig = None
     aml_compute: str
     aml_docker_config: AzureMLDockerConfig = None
+    aml_environment_config: AzureMLEnvironmentConfig = None
     resources: Dict = None
     instance_count: int = 1
     is_dev: bool = False
@@ -42,9 +43,9 @@ class AzureMLTargetUserConfig(TargetUserConfig):
 
 
 class PythonEnvironmentTargetUserConfig(TargetUserConfig):
-    python_environment_path: Union[
-        Path, str
-    ] = None  # path to the python environment, e.g. /home/user/anaconda3/envs/myenv, /home/user/.virtualenvs/myenv
+    python_environment_path: Union[Path, str] = (
+        None  # path to the python environment, e.g. /home/user/anaconda3/envs/myenv, /home/user/.virtualenvs/myenv
+    )
     environment_variables: Dict[str, str] = None  # os.environ will be updated with these variables
     prepend_to_path: List[str] = None  # paths to prepend to os.environ["PATH"]
     olive_managed_env: bool = False  # if True, the environment will be created and managed by Olive

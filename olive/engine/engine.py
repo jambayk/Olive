@@ -211,6 +211,7 @@ class Engine:
 
         Args:
             pass_flows: a list of pass names, each pass name is a string.
+
         """
         if not pass_flows:
             self.pass_flows = [list(self.pass_config.keys())] if self.pass_config else []
@@ -250,6 +251,7 @@ class Engine:
 
             if search strategy is not None, run the search strategy to find candidate models.
             Return footprint/zip(packaging_config) of candidate models and evaluation results.
+
         """
         if not accelerator_specs:
             raise ValueError("No accelerator specified")
@@ -534,6 +536,8 @@ class Engine:
 
     def create_pareto_frontier_footprints(self, accelerator_spec, output_model_num, output_dir, prefix_output_name):
         pf_footprints = self.footprints[accelerator_spec].create_pareto_frontier(output_model_num)
+        if not pf_footprints:
+            return None
         pf_footprints.to_file(output_dir / f"{prefix_output_name}pareto_frontier_footprints.json")
 
         if self._config.plot_pareto_frontier:
@@ -693,6 +697,7 @@ class Engine:
         try:
             with model_json_path.open("w") as f:
                 json.dump(model_json, f, indent=4)
+            logger.debug(f"Cached model {model_id} to {model_json_path}")
         except Exception as e:
             logger.error(f"Failed to cache model: {e}", exc_info=True)
 
@@ -775,6 +780,7 @@ class Engine:
         try:
             with run_json_path.open("w") as f:
                 json.dump(run_json, f, indent=4)
+            logger.debug(f"Cached run for {input_model_id}->{output_model_id} into {run_json_path}")
         except Exception as e:
             logger.error(f"Failed to cache run: {e}", exc_info=True)
 
@@ -852,7 +858,7 @@ class Engine:
 
         # check whether the config is valid
         if not p.validate_search_point(pass_search_point, accelerator_spec, with_fixed_value=True):
-            logger.debug("Invalid search point, prune")
+            logger.warning("Invalid search point, prune")
             output_model_config = INVALID_CONFIG
             # no need to record in footprint since there was no run and thus no valid/failed model
             # invalid configs are also not cached since the same config can be valid for other accelerator specs
@@ -871,15 +877,16 @@ class Engine:
                 # footprint model and run
                 self.footprints[accelerator_spec].record(
                     model_id=output_model_id,
-                    model_config=output_model_config.to_json()
-                    if output_model_config != FAILED_CONFIG
-                    else {"is_pruned": True},
+                    model_config=(
+                        output_model_config.to_json() if output_model_config != FAILED_CONFIG else {"is_pruned": True}
+                    ),
                     parent_model_id=input_model_id,
                     from_pass=pass_name,
                     pass_run_config=pass_config,
                     start_time=run_cache.get("run_start_time", 0),
                     end_time=run_cache.get("run_end_time", 0),
                 )
+                logger.info(f"Loaded model from cache: {output_model_id}")
                 return output_model_config, output_model_id
 
         # new model id
@@ -924,6 +931,8 @@ class Engine:
                 raise  # rethrow the exception if no search is performed
 
         run_end_time = datetime.now().timestamp()
+        logger.info(f"Pass {pass_id}:{pass_name} finished in {run_end_time - run_start_time} seconds")
+
         # cache model
         self._cache_model(output_model_config, output_model_id)
 

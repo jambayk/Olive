@@ -89,9 +89,10 @@ jobs:
       bert_ptq_cpu_aml:
         exampleFolder: bert
         exampleName: bert_ptq_cpu_aml
-      bert_ptq_cpu_docker:
-        exampleFolder: bert
-        exampleName: bert_ptq_cpu_docker
+      # enable the docker test for openvino after the ORT-openvino 1.17 is released.
+      # bert_ptq_cpu_docker:
+      #   exampleFolder: bert
+      #   exampleName: bert_ptq_cpu_docker
       resnet_ptq_cpu:
         exampleFolder: resnet
         exampleName: resnet_ptq_cpu
@@ -104,6 +105,19 @@ jobs:
       whisper:
         exampleFolder: whisper
         exampleName: whisper
+      mobilenet_qnn_toolkit:
+        exampleFolder: mobilenet
+        exampleName: qnn_tooklit
+
+- template: job_templates/olive-example-template.yaml
+  parameters:
+    name: Linux_CI_ORT_116
+    pool: $(OLIVE_POOL_UBUNTU2004)
+    onnxruntime: onnxruntime==1.16.3
+    examples:
+      bert_ptq_cpu_docker:
+        exampleFolder: bert
+        exampleName: bert_ptq_cpu_docker
 
 # # Windows examples test
 - template: job_templates/olive-example-template.yaml
@@ -127,6 +141,9 @@ jobs:
       whisper:
         exampleFolder: whisper
         exampleName: whisper
+      mobilenet_qnn_toolkit:
+        exampleFolder: mobilenet
+        exampleName: qnn_tooklit
 
 # Linux GPU examples testing.
 - template: job_templates/olive-example-template.yaml
@@ -139,7 +156,7 @@ jobs:
         exampleFolder: bert
         exampleName: bert_cuda_gpu
       stable_diffusion_cuda_gpu:
-        exampleFolder: directml/stable_diffusion
+        exampleFolder: stable_diffusion
         exampleName: stable_diffusion_cuda_gpu
         exampleRequirements: requirements-common.txt
 

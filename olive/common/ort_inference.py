@@ -28,6 +28,7 @@ def get_ort_inference_session(
         logger.debug(f"Registering custom op library: {custom_op_lib_path}")
         sess_options.register_custom_ops_library(str(custom_op_lib_path))
 
+    logger.debug(f"inference_settings: {inference_settings}")
     # execution provider
     execution_provider = inference_settings.get("execution_provider")
 
